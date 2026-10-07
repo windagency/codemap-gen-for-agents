@@ -8,8 +8,8 @@ below is checked off.
 
 ## Local environment (Docker Sandboxes)
 
-The first commit is made inside the `.sbx/codemap-dev` sandbox, which has
-`gitleaks` and the rest of the hook toolchain; the host doesn't. `sbx` 0.47.0
+Commits are made inside the `.sbx/codemap-dev` sandbox, which has `gitleaks`
+and the rest of the hook toolchain; the host doesn't. `sbx` 0.47.0
 and `gh` 2.102.0 are installed on the host (Homebrew, 2026-10-07). Each step
 below opens a browser or asks for a passphrase, so only the operator can run it.
 
@@ -21,14 +21,17 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       needs `socat`, which sbx uses to expose the agent socket. sbx 0.47.0
       doesn't enforce the kit's `sign: [git]` bound: a `file`-namespace
       signature also went through. `sbxenv.yaml` (clone mode) is still
-      unvalidated until the first commit exists.
+      unvalidated: every commit so far was made in the direct-mode
+      `codemap-bootstrap` sandbox (see Repo bootstrap).
 - [x] `sbx policy init balanced` - the one-time global network policy
       (2026-10-07). Unmatched destinations ask for approval.
 - [ ] Approve the sandbox's `github` credential binding. The secret source
       is stored (`sbx secret set github --command '/opt/homebrew/bin/gh auth
       token'`), but sbx sends it only once a binding authorizes it: run
       `sbx run --name codemap-bootstrap` in a terminal and accept the prompt.
-      Until then `git push` and `gh` inside the sandbox are unauthenticated.
+      Until then `git push` and `gh` inside the sandbox are unauthenticated;
+      so far every push ran on the host through `gh auth git-credential`
+      (still not approved, rechecked 2026-10-08).
 - [x] `gh auth login --hostname github.com --git-protocol https --web` -
       `sbxenv.yaml` sources the sandbox's GitHub secret from `gh auth token`.
       This also unblocks every `gh api` re-check in this file.
@@ -39,33 +42,47 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
 
 ## Repo bootstrap
 
-- [ ] First commit + push - repo still has zero commits (confirmed
-      2026-10-07; everything is staged). The first push must include
-      `.github/workflows/allowed-merge-source.yml`, since the `main` ruleset
-      will require its check. Made once in a **direct-mode** sandbox
-      (`sbx run --name codemap-bootstrap ./.sbx/codemap-dev .`), since clone
-      mode needs a commit to clone. `pnpm-workspace.yaml` carries an
-      uncommitted `supportedArchitectures` block for this one commit only, so
-      the sandbox's hooks find Linux Biome/TypeScript/rolldown binaries in the
-      shared `node_modules`; after the commit, `git checkout pnpm-workspace.yaml
-      && pnpm install` on the host drops it. From then on, use clone mode
-      (`sbx env run`). The live `main` ruleset requires a PR and has no
-      bypass actors yet, so the push that creates `main` may be rejected - if
-      so, disable that ruleset for the one push and re-enable it.
+- [x] First commit + push (2026-10-07): `b67a21f`
+      `feat: initial release of codemap-gen-for-agents`, signed in the
+      direct-mode `codemap-bootstrap` sandbox. The `main` ruleset had no
+      bypass yet and required checks that couldn't exist before the first
+      push, so it was set to disabled for that one push and back to active,
+      diffed identical before/after. That pass needed an uncommitted
+      `supportedArchitectures` block in `pnpm-workspace.yaml`, so the
+      sandbox's hooks found Linux binaries in the host's `node_modules`. Later
+      direct-mode commits repeated that block, never committed. Clone mode
+      (`sbx env run`) avoids it now that `main` has commits.
+- [x] 1.0.0 released (2026-10-07): `@windagency/codemap-gen-for-agents@1.0.0`
+      on npm with SLSA provenance, tag `v1.0.0`, GitHub Release, and the
+      `chore(release): 1.0.0 [skip ci]` commit pushed by the release App. It
+      took four `hotfix-*` PRs, each fixing what the previous Publish run
+      exposed: #1 CRLF licence files made `licenses:check` fail on a fresh
+      checkout; #2 setup-node's `registry-url` placeholder `.npmrc` hid
+      `NPM_TOKEN`; #3 a commitlint-hoisted `conventionalcommits@10` preset broke
+      `release-notes-generator`'s writer 8; #4 husky hooks installed on the
+      runner broke the release commit (`HUSKY: 0` at workflow level in
+      `ci.yml` and `publish.yml`).
 - [x] File modes: 307 staged data files carried the executable bit, inherited
       from the working tree (found 2026-10-07). Stripped in the index and on
       disk. Only the Husky hooks and files starting with a shebang stay
       `100755`: `.husky/*`, `scripts/generate-*.mjs`,
       `.sbx/codemap-dev/install-tools.sh`, `src/integration/*/main.ts`.
-- [ ] After that push, open a PR into `main` from an `int` or `hotfix-*`
-      branch. Confirm these checks all report: `verify`, `lint-commits`,
-      `Validate PR title`, `allowed-merge-source`. Do this before the
-      `main.json` re-sync below.
-- [ ] Open a PR from a `feat-*` branch into `int` with test-first history.
-      Confirm `tdd-order` reports green. It must report once before the
-      `integration.json` re-sync below.
-- [ ] Decide when to flip README.md/SECURITY.md's "1.0 release, published to
-      npm" wording to match reality.
+- [x] PR into `main` from `int` or `hotfix-*` with `verify`, `lint-commits`,
+      `Validate PR title` and `allowed-merge-source` all reporting - #1-#4
+      (`hotfix-*`) and #6 (`int`).
+- [x] PR from a `feat-*` branch into `int` with `tdd-order` green - #5
+      (`feat-ci-gitleaks`, `TDD-Exempt` trailer) and #7
+      (`fix-golden-determinism-timeout`, test-only change).
+- [x] `int` created (2026-10-08) from `main` at `5e5e57c`. The `integration`
+      ruleset blocks the branch's own creation, so it was set to disabled for
+      that one call and back to active, diffed identical before/after.
+- [x] README.md's "1.0, published to npm" status line is now accurate (npm
+      `latest` = 1.0.0, 2026-10-07).
+- [ ] Optional: `int` and `main` hold the same content under different commit
+      IDs after #6's squash merge, so the next `int` -> `main` PR lists #5's
+      commit again. Harmless with squash merges into `main` (the PR title is
+      the one commit that lands); merge `main` back into `int` through a PR if
+      the duplicate listing gets in the way.
 
 ## GitHub repo settings (Settings > General)
 
@@ -98,7 +115,8 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       Trusted Publishing (OIDC) for a package that has never been published,
       so the first release has to go out on a token before OIDC can take
       over.
-- [ ] After the first successful publish: delete this token, configure a
+- [ ] The first publish is done (1.0.0, 2026-10-07), so this is unblocked:
+      delete this token, configure a
       Trusted Publisher on npmjs.com (package settings -> Trusted Publisher
       -> this repo + the exact `publish.yml` filename), then remove
       `NPM_TOKEN` from both the GitHub secret and `publish.yml`'s `env:`
@@ -116,26 +134,19 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       creation; the live IDs are now `main` 24375251, `release` 24375252,
       `integration` 24375255, `feature-and-fix` 24375258, `branch-naming`
       24375261, `tags` 24375262 - rechecked 2026-10-04).
-- [ ] **Re-sync four live rulesets to the repo files.** The repo files
-      changed for the `hotfix-*` path after these were created, so the
-      live versions are now stale:
-  - `main` (24375251) from `main.json`: adds the `allowed-merge-source`
-    required check. Do this only after that check has reported green once
-    on a PR into `main` (see Repo bootstrap). Importing it earlier blocks
-    every PR into `main`.
-  - `feature-and-fix` (24375258) from `feature.json`: adds `hotfix-*`.
-  - `branch-naming` (24375261) from `branch-naming.json`: excludes
-    `hotfix-*`. Until this lands, creating a `hotfix-*` branch on GitHub is
-    rejected.
-  - `integration` (24375255) from `integration.json`: adds `tdd-order`.
-    Do this only after `tdd-order` has reported green once on a PR into
-    `int`. Importing earlier blocks every PR into `int`.
-
-  Update each with `gh api repos/windagency/codemap-gen-for-agents/rulesets/<id>
-  -X PUT --input <file>.json`. The JSON has no `bypass_actors`, so after each
-  PUT, check the ruleset's bypass list in the UI and re-add any actor that
-  disappeared. Confirm each live ruleset afterwards with
-  `gh api repos/windagency/codemap-gen-for-agents/rulesets/<id>`.
+- [x] **Re-sync the live rulesets to the repo files** (2026-10-08), each
+      after its new required check had reported green on a real PR:
+      `branch-naming` (excludes `hotfix-*`, 2026-10-07), then `main` (adds
+      `allowed-merge-source`, `gitleaks`), `release` (adds `gitleaks`),
+      `integration` (adds `tdd-order`, `gitleaks`), `feature-and-fix` (adds
+      `hotfix-*`). Each PUT carried the live `bypass_actors`; afterwards all six
+      live rulesets matched their repo files apart from GitHub's own defaults
+      (`required_reviewers: []`,
+      `require_extra_approval_for_unattributed_changes`).
+- [x] On **integration**: add bypass actor - Repository admin role, mode
+      **Pull request only** (2026-10-08). Without it a sole maintainer can't
+      merge into `int` at all (1 approving review, no bypass). Matches `main`
+      and `release`.
 - [x] Update `.github/rulesets/README.md`'s "Before you import" item 1 - now
       lists `verify`, `lint-commits`, `Validate PR title`, plus
       `allowed-merge-source` (`main`) and `tdd-order` (`int`), matching the
@@ -200,27 +211,31 @@ Done - see `documentation/GIT.md` for the current state of these hooks.
 
 - [x] `gitleaks git --pre-commit --staged` runs in `.husky/pre-commit`,
       ahead of `lint-staged`.
-- [ ] `ci.yml`'s `gitleaks` job scans each PR's commits (pinned 8.30.1,
-      SHA-256 checked) and is listed as a required check in `main.json`,
-      `release.json` and `integration.json`. After it has reported once,
-      re-sync those three live rulesets, keeping their bypass actors.
+- [x] `ci.yml`'s `gitleaks` job scans each PR's commits (pinned 8.30.1,
+      SHA-256 checked) and is a required check on `main`, `release` and
+      `int` - added in #5/#6, live rulesets re-synced 2026-10-08.
 - [x] `.husky/pre-push` mirrors `branch-naming.json` locally - catches a bad
       branch name before the server-side ruleset rejects the push.
 
 From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
 
-- [ ] **Dependabot security updates** are disabled on the repo (confirmed
-      via `gh api .../repos/windagency/codemap-gen-for-agents`). Dependabot
-      alerts are also disabled (HTTP 403). Enable both in Settings > Code
-      security.
-- [ ] **Private vulnerability reporting** is disabled (confirmed via
-      `gh api .../private-vulnerability-reporting` -> `enabled: false`).
+- [x] **Dependabot alerts** enabled (2026-10-07, `PUT .../vulnerability-alerts`),
+      which also turned on the dependency graph that `dependency-review`
+      needs. All 11 open alerts (2026-10-08) are `jackson-databind` in
+      `fixtures/java-basics/pom.xml`, Java parser test data that is never
+      built or shipped.
+- [ ] Decide on those fixture alerts: dismiss them as "not used in
+      production", or keep `fixtures/` out of Dependabot's scope.
+- [ ] **Dependabot security updates** (automatic fix PRs) are still disabled
+      (rechecked 2026-10-08). Enable in Settings > Code security; its PRs
+      would target `int` like `.github/dependabot.yml`'s version updates.
+- [ ] **Private vulnerability reporting** is disabled (rechecked 2026-10-08
+      via `gh api .../private-vulnerability-reporting` -> `enabled: false`).
       Enable it in Settings > Code security, alongside `SECURITY.md`'s email
       contact.
-- [ ] **Fork pull request workflow approval** - not verified. The REST path I
-      tried returned Not Found. Check Settings > Actions > General > Fork pull
-      request workflows, and require approval for first-time contributors at
-      minimum.
+- [x] **Fork pull request workflow approval** - `first_time_contributors`
+      (`gh api .../actions/permissions/fork-pr-contributor-approval`,
+      2026-10-08), the minimum this item asked for.
 - [x] **`.gitignore` excludes `.env`** - stale finding: the file already has
       `.env*` with `!.env.sample` and `!.env.example` (rechecked 2026-10-07).
 - [x] **`.env.example`** - not applicable. Nothing in `src/` or `scripts/`
@@ -235,8 +250,14 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       `dependency-review.yml` and `codeql.yml` (JavaScript/TypeScript and
       Actions). All workflows pass `actionlint` 1.7.12 (2026-10-07).
 - [ ] Make `dependency-review` a required check in `main.json`,
-      `release.json` and `integration.json`, after it has reported once, then
-      re-sync those rulesets (see Importing the rulesets).
+      `release.json` and `integration.json`, then re-sync those rulesets (see
+      Importing the rulesets). Unblocked: it has passed on every PR since the
+      dependency graph was enabled (#1 failed its first run before that).
+- [ ] `CHANGELOG.md`: `@semantic-release/changelog` puts each release's notes
+      above the file's `# Changelog` title and intro, since `.releaserc.json`
+      sets no `changelogTitle`. `backlinks:check` then skips the file ("first
+      line is not a "# " title"). Setting `changelogTitle` alone moves the
+      notes above the intro paragraph instead; decide on the layout first.
 - [x] Confirm CodeQL **default setup** is off - `gh api .../code-scanning/
       default-setup` returned `state: not-configured` (2026-10-07), so
       `codeql.yml`'s advanced setup doesn't conflict.
