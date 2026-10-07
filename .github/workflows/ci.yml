@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Husky's documented CI setting: pnpm install's prepare script then activates no git hooks on the runner.
+# They're developer feedback; CI runs the real checks, and @semantic-release/git's release commit needs none.
+env:
+  HUSKY: 0
+
 jobs:
   verify:
     runs-on: ubuntu-latest
