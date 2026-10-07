@@ -32,7 +32,8 @@
 				"required_status_checks": [
 					{ "context": "verify" },
 					{ "context": "lint-commits" },
-					{ "context": "Validate PR title" }
+					{ "context": "Validate PR title" },
+					{ "context": "gitleaks" }
 				]
 			}
 		}

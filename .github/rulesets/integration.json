@@ -32,7 +32,8 @@
 					{ "context": "verify" },
 					{ "context": "lint-commits" },
 					{ "context": "Validate PR title" },
-					{ "context": "tdd-order" }
+					{ "context": "tdd-order" },
+					{ "context": "gitleaks" }
 				]
 			}
 		}
