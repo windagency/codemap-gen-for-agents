@@ -200,6 +200,10 @@ Done - see `documentation/GIT.md` for the current state of these hooks.
 
 - [x] `gitleaks git --pre-commit --staged` runs in `.husky/pre-commit`,
       ahead of `lint-staged`.
+- [ ] `ci.yml`'s `gitleaks` job scans each PR's commits (pinned 8.30.1,
+      SHA-256 checked) and is listed as a required check in `main.json`,
+      `release.json` and `integration.json`. After it has reported once,
+      re-sync those three live rulesets, keeping their bypass actors.
 - [x] `.husky/pre-push` mirrors `branch-naming.json` locally - catches a bad
       branch name before the server-side ruleset rejects the push.
 
