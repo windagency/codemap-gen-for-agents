@@ -1,0 +1,10 @@
+{
+	"mcpServers": {
+		"codemap": {
+			"type": "stdio",
+			"command": "codemap-mcp",
+			"args": [],
+			"env": {}
+		}
+	}
+}

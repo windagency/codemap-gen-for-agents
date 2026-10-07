@@ -1,0 +1,27 @@
+name: Allowed merge source
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  allowed-merge-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR head branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "Pull requests into main must come from a branch in this repository, not a fork." >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "$HEAD_REF" | grep -Eq '^(int|hotfix-[a-z0-9._-]+)$'; then
+            echo "Head branch '$HEAD_REF' may not merge into main. Merge int, or a hotfix-<name> branch cut from main." >&2
+            exit 1
+          fi

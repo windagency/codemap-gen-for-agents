@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # PRs target int, not main: main only accepts merges from int or hotfix-* (allowed-merge-source.yml).
+  - package-ecosystem: npm
+    directory: /
+    target-branch: int
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+
+  # Every action is pinned to a commit SHA; this is what keeps those pins current.
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: int
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope

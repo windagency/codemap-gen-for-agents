@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 820" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Pipeline overview: Discovery feeds both the Composite Parser and GraphBuilder directly; Composite Parser's ExtractedSymbols feed GraphBuilder, which produces a RawGraph for ModuleDetector; ModuleDetector's ClusteredGraph forks into JsonTransformer and HtmlTransformer, producing codemap.json and codemap.html</title>
+  <style>
+    :root {
+      /* host-independent: safe against a host page whose true background
+         we can't know (e.g. OS dark + an explicitly light-themed editor) */
+      --box-stroke: #848484;
+      --arrow: #848484;
+      --divider: #A0A0A0;
+      --text-primary: #636363;
+      --text-secondary: #787878;
+      --text-muted: #8C8C8C;
+      /* theme-dependent: always paired with their own explicit fill */
+      --highlight-fill: #EAF1FB;
+      --highlight-stroke: #5C8FD6;
+      --panel-fill: #EFEDE8;
+      --text-highlight: #5C6A7D;
+      --text-on-fill: #1F1F1D;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --highlight-fill: #131A25;
+        --highlight-stroke: #4E85DE;
+        --panel-fill: #201F1E;
+        --text-highlight: #AEB9D6;
+        --text-on-fill: #F0EFEC;
+      }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--arrow)"/>
+    </marker>
+  </defs>
+
+
+  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">Discovery feeds both the Parser and GraphBuilder; Module clustering always recomputes globally</text>
+
+  <!-- entry -->
+  <text x="380" y="58" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">rootDir, exclude patterns</text>
+  <line x1="380" y1="64" x2="380" y2="98" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Discovery -->
+  <rect x="270" y="98" width="220" height="62" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="124" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">Discovery</text>
+  <text x="380" y="144" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">walks the filesystem once</text>
+
+  <!-- Discovery -> Parser -->
+  <line x1="380" y1="160" x2="380" y2="172" stroke="var(--arrow)" stroke-width="1.5"/>
+  <text x="380" y="183" font-size="11" fill="var(--text-secondary)" text-anchor="middle">DiscoveredStructure</text>
+  <text x="380" y="196" font-size="11" fill="var(--text-secondary)" text-anchor="middle">(Package/Directory tree, matched files)</text>
+  <line x1="380" y1="206" x2="380" y2="212" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Discovery bypass to GraphBuilder -->
+  <path d="M490,129 L660,129 L660,383 L571,383" fill="none" stroke="var(--arrow)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+  <text x="667" y="120" font-size="10" fill="var(--text-secondary)" text-anchor="start">Package/Directory</text>
+  <text x="667" y="133" font-size="10" fill="var(--text-secondary)" text-anchor="start">tree, for node</text>
+  <text x="667" y="146" font-size="10" fill="var(--text-secondary)" text-anchor="start">assembly</text>
+
+  <!-- Composite Parser -->
+  <rect x="220" y="212" width="320" height="86" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="238" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">Composite Parser</text>
+  <text x="380" y="258" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">TS/JS · Go · Rust · Java · Python</text>
+  <text x="380" y="274" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">one Parser per language, partitioned by extension</text>
+  <text x="380" y="290" font-size="10.5" fill="var(--text-muted)" text-anchor="middle">(ADR-0027, ADR-0030)</text>
+
+  <!-- Parser -> GraphBuilder -->
+  <line x1="380" y1="298" x2="380" y2="310" stroke="var(--arrow)" stroke-width="1.5"/>
+  <text x="380" y="323" font-size="11" fill="var(--text-secondary)" text-anchor="middle">ExtractedSymbols[]</text>
+  <text x="380" y="336" font-size="11" fill="var(--text-secondary)" text-anchor="middle">(already-resolved imports/calls)</text>
+  <line x1="380" y1="344" x2="380" y2="352" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- GraphBuilder -->
+  <rect x="190" y="352" width="380" height="62" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="378" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">GraphBuilder</text>
+  <text x="380" y="398" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">pure assembler — nodes + edges from ExtractedSymbols[]</text>
+
+  <!-- GraphBuilder -> ModuleDetector -->
+  <line x1="380" y1="414" x2="380" y2="424" stroke="var(--arrow)" stroke-width="1.5"/>
+  <text x="380" y="440" font-size="11" fill="var(--text-secondary)" text-anchor="middle">RawGraph (Nodes + Edges)</text>
+  <line x1="380" y1="444" x2="380" y2="450" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ModuleDetector -->
+  <rect x="220" y="450" width="320" height="62" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+  <text x="380" y="476" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">ModuleDetector (Louvain)</text>
+  <text x="380" y="496" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">community detection over the static import graph</text>
+
+  <!-- ModuleDetector -> transformers -->
+  <line x1="380" y1="512" x2="380" y2="524" stroke="var(--arrow)" stroke-width="1.5"/>
+  <text x="380" y="540" font-size="11" fill="var(--text-secondary)" text-anchor="middle">ClusteredGraph</text>
+  <line x1="380" y1="544" x2="380" y2="556" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="380" y1="556" x2="230" y2="596" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="380" y1="556" x2="530" y2="596" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Transformers -->
+  <rect x="100" y="596" width="260" height="48" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="230" y="626" font-size="13.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">JsonTransformer</text>
+
+  <rect x="400" y="596" width="260" height="48" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="530" y="626" font-size="13.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">HtmlTransformer</text>
+
+  <!-- Transformers -> outputs -->
+  <line x1="230" y1="644" x2="230" y2="668" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="530" y1="644" x2="530" y2="668" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Outputs -->
+  <rect x="100" y="668" width="260" height="52" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="230" y="700" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">codemap.json</text>
+
+  <rect x="400" y="668" width="260" height="52" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="530" y="700" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">codemap.html</text>
+
+  <line x1="90" y1="760" x2="670" y2="760" stroke="var(--divider)" stroke-width="1"/>
+  <text x="380" y="786" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">Pipeline architecture · four stages behind a single composition root (core/compose.ts)</text>
+</svg>

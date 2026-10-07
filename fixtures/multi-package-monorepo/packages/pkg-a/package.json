@@ -1,0 +1,9 @@
+{
+  "name": "@fixture/pkg-a",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@fixture/pkg-b": "workspace:*",
+    "@scope/ext-dep": "^3.1.4"
+  }
+}

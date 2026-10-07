@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 520" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Git flow branches: feat- and fix- branches merge into int, int merges into main as one change, hotfix-urgent merges into main and then int, and release/1.x branches off main</title>
+  <style>
+    :root {
+      /* host-independent: safe against a host page whose true background
+         we can't know (e.g. OS dark + an explicitly light-themed editor) */
+      --box-stroke: #848484;
+      --arrow: #848484;
+      --divider: #A0A0A0;
+      --text-primary: #636363;
+      --text-secondary: #787878;
+      --text-muted: #8C8C8C;
+      /* theme-dependent: always paired with their own explicit fill */
+      --highlight-fill: #EAF1FB;
+      --highlight-stroke: #5C8FD6;
+      --panel-fill: #EFEDE8;
+      --text-highlight: #5C6A7D;
+      --text-on-fill: #1F1F1D;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --highlight-fill: #131A25;
+        --highlight-stroke: #4E85DE;
+        --panel-fill: #201F1E;
+        --text-highlight: #AEB9D6;
+        --text-on-fill: #F0EFEC;
+      }
+    }
+  </style>
+
+  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">main accepts merges only from int and hotfix-* branches, never from feature branches</text>
+
+  <!-- lanes -->
+  <line x1="100" y1="170" x2="880" y2="170" stroke="var(--box-stroke)" stroke-width="2"/>
+  <line x1="150" y1="270" x2="740" y2="270" stroke="var(--box-stroke)" stroke-width="2"/>
+  <line x1="230" y1="360" x2="450" y2="360" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+  <!-- branch-off and merge-back curves -->
+  <path d="M100,170 C120,170 130,270 150,270" fill="none" stroke="var(--box-stroke)" stroke-width="1.5"/>
+  <path d="M190,270 C205,270 215,360 230,360" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M280,360 C310,360 320,270 330,270" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M360,270 C375,270 385,360 400,360" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M450,360 C480,360 490,270 500,270" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M500,270 C530,270 550,170 580,170" fill="none" stroke="var(--box-stroke)" stroke-width="1.5"/>
+  <path d="M620,170 C630,230 640,450 680,450" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M680,450 C700,450 740,400 740,270" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M680,450 C720,450 800,420 800,170" fill="none" stroke="var(--box-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="860" y1="170" x2="860" y2="120" stroke="var(--box-stroke)" stroke-width="1.25" stroke-dasharray="4 3"/>
+
+  <!-- commits -->
+  <circle cx="100" cy="170" r="6" fill="var(--box-stroke)"/>
+  <circle cx="230" cy="360" r="6" fill="var(--box-stroke)"/>
+  <circle cx="280" cy="360" r="6" fill="var(--box-stroke)"/>
+  <circle cx="330" cy="270" r="6" fill="var(--box-stroke)"/>
+  <circle cx="400" cy="360" r="6" fill="var(--box-stroke)"/>
+  <circle cx="450" cy="360" r="6" fill="var(--box-stroke)"/>
+  <circle cx="500" cy="270" r="6" fill="var(--box-stroke)"/>
+  <circle cx="580" cy="170" r="7" fill="var(--highlight-stroke)"/>
+  <circle cx="680" cy="450" r="6" fill="var(--box-stroke)"/>
+  <circle cx="740" cy="270" r="6" fill="var(--box-stroke)"/>
+  <circle cx="800" cy="170" r="6" fill="var(--box-stroke)"/>
+  <circle cx="860" cy="170" r="6" fill="var(--box-stroke)"/>
+
+  <!-- gate: the only check deciding what may reach main -->
+  <line x1="580" y1="112" x2="580" y2="161" stroke="var(--highlight-stroke)" stroke-width="1.25" stroke-dasharray="3 3"/>
+  <rect x="420" y="66" width="320" height="46" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+  <text x="580" y="86" font-size="13" font-weight="700" text-anchor="middle" fill="var(--text-highlight)">allowed-merge-source check</text>
+  <text x="580" y="103" font-size="12" text-anchor="middle" fill="var(--text-secondary)">only int and hotfix-* may merge into main</text>
+
+  <!-- terminal output: the release line -->
+  <rect x="800" y="92" width="120" height="28" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="860" y="111" font-size="12" font-weight="700" text-anchor="middle" fill="var(--text-on-fill)">release/1.x</text>
+
+  <text x="340" y="386" font-size="11" text-anchor="middle" fill="var(--text-muted)">tdd-order check: feat-/fix- PRs into int</text>
+
+  <!-- lane labels -->
+  <text x="20" y="174" font-size="13" font-weight="700" fill="var(--text-primary)">main</text>
+  <text x="20" y="274" font-size="13" font-weight="700" fill="var(--text-primary)">int</text>
+  <text x="20" y="364" font-size="13" font-weight="700" fill="var(--text-primary)">feat-* / fix-*</text>
+  <text x="20" y="454" font-size="13" font-weight="700" fill="var(--text-primary)">hotfix-*</text>
+
+  <!-- commit labels -->
+  <text x="100" y="194" font-size="11" text-anchor="middle" fill="var(--text-muted)">init</text>
+  <text x="680" y="474" font-size="11" text-anchor="middle" fill="var(--text-muted)">hotfix-urgent</text>
+  <text x="800" y="155" font-size="11" text-anchor="middle" fill="var(--text-muted)">merge hotfix</text>
+
+  <text x="470" y="508" font-size="12" text-anchor="middle" fill="var(--text-secondary)">Branch graph for this repo's git flow (documentation/GITFLOW.md)</text>
+</svg>

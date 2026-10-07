@@ -1,0 +1,13 @@
+{
+	"name": "codemap-gen-for-agents",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "dev",
+	"workspaceFolder": "/workspace",
+	"remoteUser": "agent",
+	"postCreateCommand": "git config --global --add safe.directory /workspace && pnpm install",
+	"customizations": {
+		"vscode": {
+			"extensions": ["biomejs.biome", "stylelint.vscode-stylelint", "vitest.explorer", "EditorConfig.EditorConfig"]
+		}
+	}
+}

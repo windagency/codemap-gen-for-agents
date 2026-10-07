@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 820" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Release decision: commit-analyzer maps fix to patch, feat to minor, a breaking-change marker on any type to major, and everything else to no release; its verdict gates release-notes-generator, changelog, npm, git, and github, run in that order</title>
+  <style>
+    :root {
+      /* host-independent: safe against a host page whose true background
+         we can't know (e.g. OS dark + an explicitly light-themed editor) */
+      --box-stroke: #848484;
+      --arrow: #848484;
+      --divider: #A0A0A0;
+      --text-primary: #636363;
+      --text-secondary: #787878;
+      --text-muted: #8C8C8C;
+      /* theme-dependent: always paired with their own explicit fill */
+      --highlight-fill: #EAF1FB;
+      --highlight-stroke: #5C8FD6;
+      --panel-fill: #EFEDE8;
+      --text-highlight: #5C6A7D;
+      --text-on-fill: #1F1F1D;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --highlight-fill: #131A25;
+        --highlight-stroke: #4E85DE;
+        --panel-fill: #201F1E;
+        --text-highlight: #AEB9D6;
+        --text-on-fill: #F0EFEC;
+      }
+    }
+  </style>
+  <defs>
+    <marker id="arrow3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--arrow)"/>
+    </marker>
+  </defs>
+
+
+  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">commit-analyzer's verdict gates every plugin that runs after it</text>
+
+  <text x="380" y="58" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">commits since the last release</text>
+  <line x1="380" y1="64" x2="380" y2="90" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- commit-analyzer -->
+  <rect x="150" y="90" width="460" height="128" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+  <text x="380" y="114" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">commit-analyzer</text>
+  <text x="380" y="136" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">fix → patch</text>
+  <text x="380" y="152" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">feat → minor</text>
+  <text x="380" y="168" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">breaking (any type, via ! or a BREAKING CHANGE: footer) → major</text>
+  <text x="380" y="184" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">everything else → no release</text>
+
+  <line x1="380" y1="218" x2="380" y2="228" stroke="var(--arrow)" stroke-width="1.5"/>
+  <text x="380" y="241" font-size="11" fill="var(--text-secondary)" text-anchor="middle">release type decided</text>
+  <text x="380" y="255" font-size="11" fill="var(--text-secondary)" text-anchor="middle">(or: stop here — nothing to release)</text>
+  <line x1="380" y1="264" x2="380" y2="278" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- release-notes-generator -->
+  <rect x="150" y="278" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="304" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">release-notes-generator</text>
+  <text x="380" y="324" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">renders this release's notes</text>
+
+  <line x1="380" y1="348" x2="380" y2="374" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- changelog -->
+  <rect x="150" y="374" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="400" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">changelog</text>
+  <text x="380" y="420" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">prepends the notes to CHANGELOG.md</text>
+
+  <line x1="380" y1="444" x2="380" y2="470" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- npm -->
+  <rect x="150" y="470" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="496" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">npm</text>
+  <text x="380" y="516" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">bumps package.json's version, npm publish (provenance on)</text>
+
+  <line x1="380" y1="540" x2="380" y2="566" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- git -->
+  <rect x="150" y="566" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="592" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">git</text>
+  <text x="380" y="612" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">commits CHANGELOG.md + package.json, pushes it back ([skip ci])</text>
+
+  <line x1="380" y1="636" x2="380" y2="662" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- github -->
+  <rect x="150" y="662" width="460" height="70" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="688" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">github</text>
+  <text x="380" y="708" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">creates the GitHub Release from the tag semantic-release pushes</text>
+
+  <line x1="90" y1="766" x2="670" y2="766" stroke="var(--divider)" stroke-width="1"/>
+  <text x="380" y="792" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">semantic-release plugin order, per .releaserc.json</text>
+</svg>

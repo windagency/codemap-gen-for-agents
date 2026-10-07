@@ -1,0 +1,6 @@
+allowBuilds:
+  tree-sitter: true
+  tree-sitter-go: true
+  tree-sitter-java: true
+  tree-sitter-python: true
+  tree-sitter-rust: true

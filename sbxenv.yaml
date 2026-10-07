@@ -1,0 +1,22 @@
+# Docker Sandboxes environment: `sbx env run` from the repo root. Setup: AGENTS.md, "Setup, build, and test commands".
+schemaVersion: "1"
+name: codemap-dev
+agent: ./.sbx/codemap-dev
+
+# Clone mode: the sandbox gets its own clone and its own Linux node_modules, and pushes branches itself.
+# A shared node_modules can't work: tree-sitter-java 0.23.5's linux-arm64 prebuild is actually an x86-64 binary.
+workspace:
+  path: .
+  clone: true
+
+# Resolved on the host by `gh auth token`, refreshed every 55 minutes. The proxy injects it; the VM only sees a sentinel.
+secrets:
+  github:
+    command: gh auth token
+
+bindings:
+  github:
+    apiKey:
+      domains:
+        - api.github.com
+        - github.com

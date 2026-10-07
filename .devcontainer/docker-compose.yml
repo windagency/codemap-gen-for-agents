@@ -1,0 +1,16 @@
+services:
+  dev:
+    # Same image as the Docker Sandboxes workload in .sbx/codemap-dev/.
+    build:
+      context: ../.sbx/codemap-dev
+      dockerfile: codemap-dev.dockerfile
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - ..:/workspace:cached
+      # Keeps container installs out of the host's node_modules.
+      - node_modules:/workspace/node_modules
+    environment:
+      - GIT_SIGNING_KEY
+
+volumes:
+  node_modules:

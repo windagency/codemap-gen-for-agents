@@ -1,0 +1,4 @@
+gitleaks git --pre-commit --staged
+pnpm exec lint-staged
+pnpm run backlinks:check
+pnpm run typecheck

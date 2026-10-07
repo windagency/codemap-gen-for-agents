@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 660" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Commit signing: a local commit is signed per the repo's gpg.format, commit.gpgsign, and user.signingkey config, pushed to GitHub, which checks the signature against the committer's registered Signing Key and shows either Verified or Unverified</title>
+  <style>
+    :root {
+      /* host-independent: safe against a host page whose true background
+         we can't know (e.g. OS dark + an explicitly light-themed editor) */
+      --box-stroke: #848484;
+      --arrow: #848484;
+      --divider: #A0A0A0;
+      --text-primary: #636363;
+      --text-secondary: #787878;
+      --text-muted: #8C8C8C;
+      /* theme-dependent: always paired with their own explicit fill */
+      --highlight-fill: #EAF1FB;
+      --highlight-stroke: #5C8FD6;
+      --panel-fill: #EFEDE8;
+      --text-highlight: #5C6A7D;
+      --text-on-fill: #1F1F1D;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --highlight-fill: #131A25;
+        --highlight-stroke: #4E85DE;
+        --panel-fill: #201F1E;
+        --text-highlight: #AEB9D6;
+        --text-on-fill: #F0EFEC;
+      }
+    }
+  </style>
+  <defs>
+    <marker id="arrow4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--arrow)"/>
+    </marker>
+  </defs>
+
+
+  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">Signing is configured per repository clone, not globally</text>
+
+  <!-- local commit -->
+  <rect x="190" y="60" width="380" height="62" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="86" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">local commit</text>
+  <text x="380" y="106" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">git commit, signed automatically</text>
+
+  <line x1="380" y1="122" x2="380" y2="148" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+  <!-- sign config -->
+  <rect x="190" y="148" width="380" height="86" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="174" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">sign</text>
+  <text x="380" y="194" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">gpg.format=ssh · commit.gpgsign=true</text>
+  <text x="380" y="212" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">user.signingkey=&lt;path to your SSH public key&gt;</text>
+
+  <line x1="380" y1="234" x2="380" y2="260" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+  <!-- push -->
+  <rect x="190" y="260" width="380" height="62" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="286" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">push</text>
+  <text x="380" y="306" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">pushed to GitHub</text>
+
+  <line x1="380" y1="322" x2="380" y2="348" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+  <!-- GitHub verification -->
+  <rect x="150" y="348" width="460" height="86" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+  <text x="380" y="376" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">GitHub verification</text>
+  <text x="380" y="396" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">checks the signature against the</text>
+  <text x="380" y="412" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">committer's registered Signing Key</text>
+
+  <!-- fork -->
+  <line x1="380" y1="434" x2="380" y2="446" stroke="var(--arrow)" stroke-width="1.5"/>
+  <text x="380" y="460" font-size="11" fill="var(--text-secondary)" text-anchor="middle">signature check</text>
+  <line x1="380" y1="464" x2="380" y2="476" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="380" y1="476" x2="230" y2="500" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+  <line x1="380" y1="476" x2="530" y2="500" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+  <!-- Verified -->
+  <rect x="100" y="500" width="260" height="70" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+  <text x="230" y="528" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">Verified</text>
+  <text x="230" y="548" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">key is registered</text>
+
+  <!-- Unverified -->
+  <rect x="400" y="500" width="260" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="530" y="528" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">Unverified</text>
+  <text x="530" y="548" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">key missing or not registered</text>
+
+  <line x1="90" y1="604" x2="670" y2="604" stroke="var(--divider)" stroke-width="1"/>
+  <text x="380" y="630" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">Configured with git config (no --global), so it doesn't change how you sign commits elsewhere</text>
+</svg>

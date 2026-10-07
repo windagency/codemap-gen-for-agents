@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 696" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Pipeline overview: pushing or opening a PR against main, release/**, or int runs ci.yml's verify and lint-commits jobs plus pr-title.yml's Validate PR title check; feat-/fix- PRs into int also run ci.yml's tdd-order job; PRs into main also run allowed-merge-source.yml's check; merging into main or release/** triggers publish.yml, which re-runs verify then runs semantic-release, forking into npm registry, GitHub Release, and a version-bump git commit; merging into int produces no release</title>
+  <style>
+    :root {
+      /* host-independent: safe against a host page whose true background
+         we can't know (e.g. OS dark + an explicitly light-themed editor) */
+      --box-stroke: #848484;
+      --arrow: #848484;
+      --divider: #A0A0A0;
+      --text-primary: #636363;
+      --text-secondary: #787878;
+      --text-muted: #8C8C8C;
+      /* theme-dependent: always paired with their own explicit fill */
+      --highlight-fill: #EAF1FB;
+      --highlight-stroke: #5C8FD6;
+      --panel-fill: #EFEDE8;
+      --text-highlight: #5C6A7D;
+      --text-on-fill: #1F1F1D;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --highlight-fill: #131A25;
+        --highlight-stroke: #4E85DE;
+        --panel-fill: #201F1E;
+        --text-highlight: #AEB9D6;
+        --text-on-fill: #F0EFEC;
+      }
+    }
+  </style>
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--arrow)"/>
+    </marker>
+  </defs>
+
+  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">Core checks run on every push/PR; only main and release/** can release - int never does</text>
+
+  <!-- entry -->
+  <text x="620" y="58" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">push / PR → main · release/** · int</text>
+  <line x1="620" y1="64" x2="620" y2="86" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="620" y1="86" x2="148" y2="98" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="620" y1="86" x2="384" y2="98" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="620" y1="86" x2="620" y2="98" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="620" y1="86" x2="856" y2="98" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="620" y1="86" x2="1092" y2="98" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- verify -->
+  <rect x="38" y="98" width="220" height="102" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="148" y="124" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">verify</text>
+  <text x="148" y="142" font-size="11" fill="var(--text-secondary)" text-anchor="middle">ci.yml job · every push + PR</text>
+  <text x="148" y="158" font-size="11" fill="var(--text-secondary)" text-anchor="middle">lint → lint:css → typecheck</text>
+  <text x="148" y="174" font-size="11" fill="var(--text-secondary)" text-anchor="middle">licenses:check → backlinks:check</text>
+  <text x="148" y="190" font-size="11" fill="var(--text-secondary)" text-anchor="middle">test → build</text>
+
+  <!-- lint-commits -->
+  <rect x="274" y="98" width="220" height="102" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25" stroke-dasharray="4 3"/>
+  <text x="384" y="124" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">lint-commits</text>
+  <text x="384" y="142" font-size="11" fill="var(--text-secondary)" text-anchor="middle">ci.yml job · PR events only</text>
+  <text x="384" y="158" font-size="11" fill="var(--text-secondary)" text-anchor="middle">commitlint over the PR's commits</text>
+
+  <!-- tdd-order -->
+  <rect x="510" y="98" width="220" height="102" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25" stroke-dasharray="4 3"/>
+  <text x="620" y="124" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">tdd-order</text>
+  <text x="620" y="142" font-size="11" fill="var(--text-secondary)" text-anchor="middle">ci.yml job · feat-/fix- PRs into int</text>
+  <text x="620" y="158" font-size="11" fill="var(--text-secondary)" text-anchor="middle">each impl commit follows a failing test</text>
+
+  <!-- allowed-merge-source -->
+  <rect x="746" y="98" width="220" height="102" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25" stroke-dasharray="4 3"/>
+  <text x="856" y="124" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">allowed-merge-source</text>
+  <text x="856" y="142" font-size="11" fill="var(--text-secondary)" text-anchor="middle">allowed-merge-source.yml</text>
+  <text x="856" y="158" font-size="11" fill="var(--text-secondary)" text-anchor="middle">PRs into main only</text>
+  <text x="856" y="174" font-size="11" fill="var(--text-secondary)" text-anchor="middle">head is int or hotfix-*, never a fork</text>
+
+  <!-- Validate PR title -->
+  <rect x="982" y="98" width="220" height="102" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25" stroke-dasharray="4 3"/>
+  <text x="1092" y="124" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">Validate PR title</text>
+  <text x="1092" y="142" font-size="11" fill="var(--text-secondary)" text-anchor="middle">pr-title.yml · pull_request_target</text>
+  <text x="1092" y="158" font-size="11" fill="var(--text-secondary)" text-anchor="middle">lints the title squash-merge keeps</text>
+
+  <!-- converge -->
+  <line x1="148" y1="200" x2="620" y2="230" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="384" y1="200" x2="620" y2="230" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="620" y1="200" x2="620" y2="230" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="856" y1="200" x2="620" y2="230" stroke="var(--arrow)" stroke-width="1.5"/>
+  <line x1="1092" y1="200" x2="620" y2="230" stroke="var(--arrow)" stroke-width="1.5"/>
+
+  <!-- everything below the merge keeps its original layout, shifted to the wider canvas -->
+  <g transform="translate(120,16)">
+    <text x="500" y="230" font-size="11" fill="var(--text-secondary)" text-anchor="middle">PR merged</text>
+    <line x1="500" y1="238" x2="500" y2="250" stroke="var(--arrow)" stroke-width="1.5"/>
+
+    <!-- split: main/release/** continues straight down; int forks right to a dead end -->
+    <line x1="500" y1="250" x2="500" y2="254" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="500" y1="250" x2="860" y2="254" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <text x="690" y="244" font-size="10.5" fill="var(--text-muted)" text-anchor="middle">int</text>
+
+    <!-- publish -->
+    <rect x="310" y="254" width="380" height="86" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+    <text x="500" y="280" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">publish</text>
+    <text x="500" y="300" font-size="11" fill="var(--text-secondary)" text-anchor="middle">publish.yml job · push to main or release/**</text>
+    <text x="500" y="316" font-size="11" fill="var(--text-secondary)" text-anchor="middle">re-runs the full verify suite, then runs semantic-release</text>
+
+    <!-- int: dead end, no publish step -->
+    <rect x="760" y="254" width="200" height="86" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+    <text x="860" y="280" font-size="13.5" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">int</text>
+    <text x="860" y="300" font-size="11" fill="var(--text-secondary)" text-anchor="middle">merged - no release</text>
+    <text x="860" y="316" font-size="11" fill="var(--text-secondary)" text-anchor="middle">reaches main via its own PR</text>
+
+    <line x1="500" y1="340" x2="500" y2="378" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+    <!-- semantic-release -->
+    <rect x="300" y="378" width="400" height="70" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+    <text x="500" y="404" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">semantic-release</text>
+    <text x="500" y="424" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">decides whether a release is warranted, and performs it if so</text>
+
+    <!-- fan-out -->
+    <line x1="500" y1="448" x2="500" y2="460" stroke="var(--arrow)" stroke-width="1.5"/>
+    <text x="500" y="474" font-size="11" fill="var(--text-secondary)" text-anchor="middle">release artifacts</text>
+    <line x1="500" y1="478" x2="500" y2="490" stroke="var(--arrow)" stroke-width="1.5"/>
+    <line x1="500" y1="490" x2="260" y2="506" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="500" y1="490" x2="500" y2="506" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="500" y1="490" x2="740" y2="506" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+    <!-- outputs -->
+    <rect x="150" y="506" width="220" height="76" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+    <text x="260" y="536" font-size="13.5" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">npm registry</text>
+    <text x="260" y="556" font-size="11" fill="var(--text-secondary)" text-anchor="middle">package + npm provenance</text>
+
+    <rect x="390" y="506" width="220" height="76" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+    <text x="500" y="536" font-size="13.5" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">GitHub Release</text>
+    <text x="500" y="556" font-size="11" fill="var(--text-secondary)" text-anchor="middle">tag + release notes</text>
+
+    <rect x="630" y="506" width="220" height="76" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+    <text x="740" y="536" font-size="13.5" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">git commit back</text>
+    <text x="740" y="554" font-size="11" fill="var(--text-secondary)" text-anchor="middle">CHANGELOG.md, package.json</text>
+    <text x="740" y="568" font-size="11" fill="var(--text-secondary)" text-anchor="middle">version, [skip ci]</text>
+
+    <line x1="-82" y1="616" x2="1082" y2="616" stroke="var(--divider)" stroke-width="1"/>
+    <text x="500" y="642" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">Release pipeline · int runs checks only, no publish step · publish.yml always re-runs verify before semantic-release decides</text>
+  </g>
+</svg>

@@ -1,0 +1,44 @@
+# syntax=docker/sandbox-kit:3
+schemaVersion: "3"
+kind: workload
+displayName: codemap-gen-for-agents dev shell
+description: Pinned Node, pnpm, and every tool this repo's hooks and docs call for. Secrets stay on the host.
+sourceUrl: https://github.com/windagency/codemap-gen-for-agents
+
+capabilities:
+  - type: com.docker.sandbox/sbx@1
+
+  # pnpm install, plus git push and gh over HTTPS. Tool downloads happen at image build, not here.
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          - registry.npmjs.org:443
+          - github.com:443
+          - api.github.com:443
+
+  # The host proxy swaps GH_TOKEN's sentinel for the real token on the way out. The token never enters the VM.
+  - type: com.docker.sandbox/credential@1
+    description: GitHub access for git push and gh
+    config:
+      service: github
+      phase: runtime
+      apiKey:
+        name: GH_TOKEN
+        proxyManaged: true
+        inject:
+          - domain: api.github.com
+            header: Authorization
+            format: "Bearer %s"
+          - domain: github.com
+            scheme: basic
+            username: x-access-token
+
+  # Signs commits with the host agent's key; the private key stays on the host. The bound below asks for git
+  # signatures only, but sbx 0.47.0 doesn't enforce it: a file-namespace signature also went through (2026-10-07).
+  - type: com.docker.sandbox/ssh-agent@1
+    description: SSH commit signing
+    config:
+      phase: runtime
+      unrestricted: false
+      sign: [git]

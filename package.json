@@ -1,0 +1,92 @@
+{
+	"name": "@windagency/codemap-gen-for-agents",
+	"version": "1.0.0",
+	"description": "Code-map generator for AI coding agents",
+	"type": "module",
+	"license": "MIT",
+	"author": "Damien TIVELET <damien@wind-agency.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/windagency/codemap-gen-for-agents.git"
+	},
+	"bugs": {
+		"url": "https://github.com/windagency/codemap-gen-for-agents/issues"
+	},
+	"homepage": "https://github.com/windagency/codemap-gen-for-agents#readme",
+	"publishConfig": {
+		"provenance": true,
+		"access": "public"
+	},
+	"engines": {
+		"node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+	},
+	"volta": {
+		"node": "26.9.0"
+	},
+	"packageManager": "pnpm@12.4.2",
+	"bin": {
+		"codemap": "./dist/integration/cli/main.js",
+		"codemap-mcp": "./dist/integration/mcp/main.js"
+	},
+	"files": [
+		"dist",
+		"THIRD_PARTY_LICENSES.md"
+	],
+	"scripts": {
+		"prepare": "husky",
+		"lint": "biome lint .",
+		"lint:css": "stylelint \"src/output/html/*-css.ts\"",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node -e \"require('node:fs').copyFileSync('src/integration/skill/SKILL.md', 'dist/integration/skill/SKILL.md')\"",
+		"backlinks:generate": "node scripts/generate-back-links.mjs",
+		"backlinks:check": "node scripts/generate-back-links.mjs --check",
+		"licenses:generate": "node scripts/generate-third-party-licenses.mjs",
+		"licenses:check": "node scripts/generate-third-party-licenses.mjs --check",
+		"release": "semantic-release"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.30.0",
+		"d3": "^7.9.0",
+		"graphology": "0.26.0",
+		"graphology-communities-louvain": "2.0.2",
+		"ignore": "^7.0.11",
+		"picomatch": "^4.0.7",
+		"tree-sitter": "^0.25.1",
+		"tree-sitter-go": "^0.25.0",
+		"tree-sitter-java": "^0.23.5",
+		"tree-sitter-python": "^0.25.0",
+		"tree-sitter-rust": "^0.24.0",
+		"typescript": "^7.0.2",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.14",
+		"@commitlint/cli": "^21.2.3",
+		"@commitlint/config-conventional": "^21.2.3",
+		"@semantic-release/changelog": "^7.0.0",
+		"@semantic-release/commit-analyzer": "^13.0.1",
+		"@semantic-release/git": "^11.0.1",
+		"@semantic-release/github": "^12.0.10",
+		"@semantic-release/npm": "^13.2.0",
+		"@semantic-release/release-notes-generator": "^14.1.1",
+		"@types/d3": "^7.4.3",
+		"@types/jsdom": "^30.0.0",
+		"@types/node": "^24.0.0",
+		"@types/picomatch": "^4.0.3",
+		"axe-core": "^4.13.0",
+		"husky": "^9.1.7",
+		"jsdom": "^30.1.0",
+		"lint-staged": "^17.5.1",
+		"postcss-styled-syntax": "^0.7.2",
+		"semantic-release": "^25.0.9",
+		"stylelint": "^17.15.0",
+		"stylelint-config-standard": "^40.0.0",
+		"stylelint-order": "^8.1.1",
+		"tsc-alias": "^1.9.5",
+		"vitest": "^5.0.1",
+		"vitest-axe": "^0.1.0"
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"name": "feature-and-fix",
+	"target": "branch",
+	"enforcement": "active",
+	"conditions": {
+		"ref_name": {
+			"include": ["refs/heads/feat-*", "refs/heads/fix-*", "refs/heads/hotfix-*"],
+			"exclude": []
+		}
+	},
+	"rules": [{ "type": "required_signatures" }]
+}

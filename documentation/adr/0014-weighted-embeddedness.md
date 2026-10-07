@@ -1,0 +1,26 @@
+# 0014: A file's embeddedness is measured on the same weighted edges used to detect its community
+
+[Back to 0007-folder-proximity-weighted-detection.md](0007-folder-proximity-weighted-detection.md) • [Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md)
+
+## Status
+
+Accepted. Narrows the classification rule from documentation/adr/0001, on top of documentation/adr/0007's folder-proximity edge weighting. documentation/adr/0015-community-size-floor-lowered-to-two.md follows up with a second classification-order fix found once this one was in place.
+
+## Context
+
+ADR-0007 weights import edges exponentially by shared directory depth so Louvain favors grouping folder-proximate files, but its own Consequences flagged an unresolved gap: "the weighting only influences which community Louvain assigns a file to - it has no effect on `classify`'s per-file `MIN_EMBEDDEDNESS` (0.5) gate, which is computed from raw, unweighted edge counts... it can win ties and modest minorities, not gross majorities."
+
+Running the generator on its own codebase hit exactly that ceiling. `src/core/compose.ts` - the composition root that wires every domain together - has 12 raw import edges, only 4 of them to other `src/core/`-community files; its unweighted embeddedness is 4/12 = 0.33, well under 0.5, so it came out `low-embeddedness` and unassigned. But Louvain's own (weighted) community detection had already placed it in the `core` community, using the exact same folder-proximity signal ADR-0007 introduced - `compose.ts`'s edges to other `src/core/` files carry weight 9 (two shared segments), its edges to `src/extraction/`, `src/integration/mcp/`, etc. carry weight 3 (one shared segment, both under `src`). Weighing `compose.ts`'s embeddedness by that same signal gives 30/54 = 0.56, comfortably over the 0.5 floor. The two steps disagreed about how "connected" the same file is to the same community, using two different definitions of "connected" on the same graph. Six more files in this codebase's own generated map (`generate-map.ts`, `types.ts`, `discovery.ts`, `mcp-adapter.ts`, `server.ts`, `module-naming.ts`) hit the identical inconsistency.
+
+## Decision
+
+`classify`'s embeddedness check (`src/clustering/louvain/louvain-module-detector.ts`) now sums each neighbor edge's `weight` attribute - the same `importEdgeWeight` values already attached to every edge before Louvain ever runs - instead of counting raw neighbor edges. `weightedDegree(importGraph, fileId, predicate?)` computes this once for the file's total and once restricted to same-community neighbors; embeddedness is `internalWeight / totalWeight` against the unchanged `MIN_EMBEDDEDNESS = 0.5` threshold. `MIN_COMMUNITY_SIZE` and `MIN_MODULARITY` are untouched, and both still use raw counts (community size is a count of files, not a graph-weight quantity; modularity is graphology's own weighted computation already).
+
+This isn't a new signal - `weight` was already on every edge in `importGraph` for Louvain's sake. Embeddedness now just reads it instead of ignoring it.
+
+## Consequences
+
+- Measured on this repo's own generated map: unassigned files dropped from 13 to 6. `compose.ts` (0.33 → 0.56), `generate-map.ts` (0.43 → 0.67), `types.ts` (0.40 → 0.63), `discovery.ts` (0.25 → 0.50), `mcp-adapter.ts` (0.20 → 0.69), `server.ts` (0.40 → 0.86), and `module-naming.ts` (0.33 → 0.82) all crossed the 0.5 floor and are now assigned to their real (folder-cohesive) community. `test-file.ts` (0.33) and `transformer.ts` (0.33) stayed below it under both measures - they're genuinely shared across three-plus unrelated communities with no folder-proximity edge strong enough to pull them into any one of them, which is the honest answer for a file that legitimately serves multiple domains equally.
+- Checked every other file in this codebase's graph for the reverse case (weighting pushing a previously-assigned file below 0.5): none occurred. This is expected, not incidental - a file's same-community neighbors were put there partly *because* of high-weight (folder-proximate) edges, so weighting an already-embedded file's ratio can only hold steady or improve, never fall, in the typical case; a file could theoretically regress if its community membership came from raw import volume against a folder-distant community, but no such file exists in this codebase today.
+- Four files (`cli-adapter.ts`, `main.ts` × 2, `skill-adapter.ts`) remain unassigned for an unrelated reason - `undersized`, their communities have only 2 members each, below `MIN_COMMUNITY_SIZE`'s floor of 3. This decision doesn't touch that threshold; it's a separate question about the size floor, not about how embeddedness within a community is measured. (Revisited directly afterward: documentation/adr/0015 lowers that floor to 2, which is what actually rescues these four files.)
+- `louvain-module-detector.test.ts` gained a test asserting a folder-embedded bridge file (3 high-weight internal edges, 4 low-weight external ones - unweighted-fail, weighted-pass) is assigned rather than marked `low-embeddedness`; all prior tests use flat, directory-less file ids where every edge weight is `1`, so weighted and unweighted embeddedness coincide and those assertions are unaffected.

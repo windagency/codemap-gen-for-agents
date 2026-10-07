@@ -1,0 +1,21 @@
+{
+	"name": "branch-naming",
+	"target": "branch",
+	"enforcement": "active",
+	"conditions": {
+		"ref_name": {
+			"include": ["~ALL"],
+			"exclude": [
+				"~DEFAULT_BRANCH",
+				"refs/heads/int",
+				"refs/heads/release/**/*",
+				"refs/heads/feat-*",
+				"refs/heads/fix-*",
+				"refs/heads/hotfix-*",
+				"refs/heads/dependabot/**/*",
+				"refs/heads/revert-*"
+			]
+		}
+	},
+	"rules": [{ "type": "creation" }]
+}

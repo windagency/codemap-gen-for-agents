@@ -1,0 +1,15 @@
+pattern='^(main|int|release/[0-9]+(\.[0-9]+)?\.x|(feat|fix|hotfix)-[a-z0-9._-]+|dependabot/.+|revert-.+)$'
+zero='0000000000000000000000000000000000000000'
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  case "$remote_ref" in
+    refs/heads/*) branch="${remote_ref#refs/heads/}" ;;
+    *) continue ;;
+  esac
+  if ! printf '%s\n' "$branch" | grep -Eq "$pattern"; then
+    echo "Branch '$branch' does not match naming rules." >&2
+    echo "Use feat-<name>, fix-<name>, or hotfix-<name>." >&2
+    exit 1
+  fi
+done

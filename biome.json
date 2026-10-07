@@ -1,0 +1,101 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": ["**", "!fixtures"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 120
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"trailingCommas": "all",
+			"semicolons": "always"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"suspicious": {
+				"noExplicitAny": "error"
+			},
+			"style": {
+				"useNamingConvention": {
+					"level": "error",
+					"options": {
+						"conventions": [
+							{
+								"selector": {
+									"kind": "interface"
+								},
+								"match": "([A-HJ-Z][A-Za-z0-9]*|I[a-z][A-Za-z0-9]*|I)"
+							}
+						]
+					}
+				},
+				"useFilenamingConvention": {
+					"level": "error",
+					"options": {
+						"filenameCases": ["kebab-case"]
+					}
+				},
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"patterns": [
+							{
+								"group": ["../*", "../**"]
+							}
+						]
+					}
+				}
+			},
+			"complexity": {
+				"noExcessiveCognitiveComplexity": {
+					"level": "error",
+					"options": {
+						"maxAllowedComplexity": 10
+					}
+				}
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.json", "**/*.jsonc"],
+			"linter": {
+				"rules": {
+					"style": {
+						"useNamingConvention": "off",
+						"useFilenamingConvention": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["**/*.md"],
+			"formatter": {
+				"indentStyle": "space",
+				"lineWidth": 320
+			}
+		}
+	]
+}
