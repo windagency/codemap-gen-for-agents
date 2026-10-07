@@ -4,3 +4,11 @@ allowBuilds:
   tree-sitter-java: true
   tree-sitter-python: true
   tree-sitter-rust: true
+
+# Keep commitlint's conventional-changelog-conventionalcommits@10 out of the hidden hoist folder.
+# @semantic-release/release-notes-generator@14 loads its preset from its own directory first, which
+# would find that copy; v10 needs conventional-changelog-writer@9, but the generator ships writer@8.
+# With it unhoisted, the generator falls back to the root devDependency, pinned to v9.
+hoistPattern:
+  - "*"
+  - "!conventional-changelog-conventionalcommits"
