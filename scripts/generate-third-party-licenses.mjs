@@ -36,7 +36,9 @@ function readLicenseFile(packageDir) {
 	if (!match) {
 		throw new Error(`No LICENSE file found in ${packageDir}`);
 	}
-	return readFileSync(join(packageDir, match), "utf8").trimEnd();
+	// Some packages ship CRLF licence files (typescript, json-schema-typed). .gitattributes commits
+	// THIRD_PARTY_LICENSES.md as LF, so copying CRLF verbatim makes --check fail on every fresh checkout.
+	return readFileSync(join(packageDir, match), "utf8").replace(/\r\n/g, "\n").trimEnd();
 }
 
 // A representative package's LICENSE file still carries *that* package's own copyright line(s) -
