@@ -205,11 +205,14 @@ describe("golden-file fixtures", () => {
 		expect(fileNode?.moduleId).toBe(testsModule?.id);
 	});
 
-	it("produces byte-identical codemap.json across two runs of the same unchanged fixture", () => {
-		for (const scenario of SCENARIOS) {
+	// One test per scenario, like the byte-for-byte tests above: a single test running every
+	// scenario twice outgrew Vitest's 5s default on CI runners, and this also names the fixture
+	// that broke determinism.
+	for (const scenario of SCENARIOS) {
+		it(`produces byte-identical codemap.json across two runs of the same unchanged fixture: ${scenario.name}`, () => {
 			expect(generate(scenario)).toBe(generate(scenario));
-		}
-	});
+		});
+	}
 
 	// Real end-to-end coverage for ticket 13's unparseable-file policy
 	// (that ticket's "Fixture: a
