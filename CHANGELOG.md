@@ -1,3 +1,16 @@
+## 1.0.0 (2026-10-07)
+
+### Features
+
+* initial release of codemap-gen-for-agents ([b67a21f](https://github.com/windagency/codemap-gen-for-agents/commit/b67a21fa3659b212511dae02d70f1f9b23885e7e))
+
+### Bug Fixes
+
+* install no git hooks on CI runners ([#4](https://github.com/windagency/codemap-gen-for-agents/issues/4)) ([24a56e6](https://github.com/windagency/codemap-gen-for-agents/commit/24a56e6290631461b0a989972e167abf808597f8))
+* let semantic-release authenticate to npm with NPM_TOKEN ([#2](https://github.com/windagency/codemap-gen-for-agents/issues/2)) ([8426a87](https://github.com/windagency/codemap-gen-for-agents/commit/8426a8732f76e7f0dad084122ddc352e0ebfe23d))
+* normalize CRLF in third-party license manifest ([#1](https://github.com/windagency/codemap-gen-for-agents/issues/1)) ([1e23b51](https://github.com/windagency/codemap-gen-for-agents/commit/1e23b513623fc4a7f142f51e3a93feffbab715b5))
+* render release notes with the preset the notes writer supports ([#3](https://github.com/windagency/codemap-gen-for-agents/issues/3)) ([3acb4a0](https://github.com/windagency/codemap-gen-for-agents/commit/3acb4a091291659726c8b8d587b93c1d12fb2ca0))
+
 # Changelog
 
 [Back to README.md](README.md) • [Back to .github/rulesets/README.md](.github/rulesets/README.md) • [Back to 10-commits-and-versioning.md](CODING_RULES/10-commits-and-versioning.md) • [Back to DEPLOYMENT.md](documentation/DEPLOYMENT.md) • [Back to SEMVER.md](documentation/SEMVER.md)
