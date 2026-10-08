@@ -22,7 +22,7 @@ The packages this project's own `package.json` depends on directly.
 | --- | --- | --- | --- |
 | typescript | 7.0.2 | Apache-2.0 | Microsoft Corp. |
 | d3 | 7.9.0 | ISC | Mike Bostock |
-| @modelcontextprotocol/sdk | 1.31.0 | MIT | Anthropic, PBC |
+| @modelcontextprotocol/sdk | 1.32.1 | MIT | Anthropic, PBC |
 | graphology | 0.26.0 | MIT | - |
 | graphology-communities-louvain | 2.0.2 | MIT | - |
 | ignore | 7.0.12 | MIT | kael |
@@ -86,7 +86,7 @@ Every package resolved into the production tree (direct and transitive), as inst
 | wrappy | 1.0.2 | ISC | Isaac Z. Schlueter |
 | zod-to-json-schema | 3.25.2 | ISC | Stefan Terdell |
 | @hono/node-server | 2.1.3 | MIT | Yusuke Wada |
-| @modelcontextprotocol/sdk | 1.31.0 | MIT | Anthropic, PBC |
+| @modelcontextprotocol/sdk | 1.32.1 | MIT | Anthropic, PBC |
 | accepts | 2.0.0 | MIT | - |
 | ajv | 8.20.0 | MIT | Evgeny Poberezkin |
 | ajv-formats | 3.0.1 | MIT | Evgeny Poberezkin |
