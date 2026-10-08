@@ -55,7 +55,7 @@ Branch model (full detail, including why each rule exists: [`CODING_RULES/10-com
 
 - **`main`**: the trunk. Always releasable; every push here is evaluated for a release by `semantic-release`. Accepts merges only from `int` or `hotfix-*`. Squash merge only, 1 approval plus code owner review.
 - **`release/<major>.x`** (e.g. `release/1.x`): maintenance branch for a release line no longer on `main`. Squash or rebase merge, same review bar as `main`. Never a route into `main`.
-- **`int`**: shared integration branch. Where several `feat-*`/`fix-*` branches land, often daily, before the set of them goes to `main` as one reviewed change. Lighter bar than `main`: no strict up-to-date requirement, no code owner review. Publishes nothing on its own.
+- **`int`**: shared integration branch. Where several `feat-*`/`fix-*` branches land, often daily, before the set of them goes to `main` as one reviewed change. Lighter bar than `main`: no strict up-to-date requirement, no code owner review. Publishes nothing on its own. After each squash promotion into `main`, merge `main` back into `int` with a merge commit (see [`GITFLOW.md`](GITFLOW.md)).
 - **`feat-<name>` / `fix-<name>`** (hyphen, not slash): short-lived work branches, cut from `main` or `int`, merged into `int`. Only signed commits are required - force-push, rebase, and delete freely; protection lives on the branch being merged into, not here.
 - **`hotfix-<name>`** (hyphen, not slash): urgent production fix, cut from `main`. Merged into `main` directly, then the same branch is merged into `int`. Only signed commits are required, same as `feat-*`/`fix-*`.
 
