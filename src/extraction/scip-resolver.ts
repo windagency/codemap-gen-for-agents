@@ -45,15 +45,41 @@ function realpathOrSelf(dir: string): string {
 	}
 }
 
-// Documents are relative to the index's own project root. An index built on another machine
-// (CI, or a committed fixture) names a root that does not exist here; it is then read as
-// relative to the directory holding the index file.
-function documentRootOf(index: ScipIndex, indexPath: string): string {
+function isDirectory(dir: string): boolean {
+	try {
+		return fs.statSync(dir).isDirectory();
+	} catch {
+		return false;
+	}
+}
+
+// The recorded project root first, then the directory holding the index and each of its
+// ancestors: an index built on another machine (CI, a committed fixture) names a root that does
+// not exist here, and may have been stored anywhere below the tree it describes.
+function candidateRootsOf(index: ScipIndex, indexPath: string): string[] {
+	const candidates: string[] = [];
 	if (index.projectRoot.startsWith("file://")) {
 		const projectRoot = fileURLToPath(index.projectRoot);
-		if (fs.existsSync(projectRoot) && fs.statSync(projectRoot).isDirectory()) return realpathOrSelf(projectRoot);
+		if (isDirectory(projectRoot)) candidates.push(projectRoot);
 	}
-	return realpathOrSelf(path.dirname(indexPath));
+	for (let dir = path.dirname(path.resolve(indexPath)); ; dir = path.dirname(dir)) {
+		candidates.push(dir);
+		if (path.dirname(dir) === dir) break;
+	}
+	return candidates;
+}
+
+// Documents are relative to the index's project root. Picks the candidate under which the most
+// documents exist on disk; the earliest candidate wins a tie.
+function documentRootOf(index: ScipIndex, indexPath: string): string {
+	let best = { root: path.dirname(path.resolve(indexPath)), hits: -1 };
+	for (const root of candidateRootsOf(index, indexPath)) {
+		const hits = index.documents.filter((document) =>
+			fs.existsSync(path.join(root, ...document.relativePath.split("/"))),
+		).length;
+		if (hits > best.hits) best = { root, hits };
+	}
+	return realpathOrSelf(best.root);
 }
 
 // scip-python leaves `Document.language` empty, so an empty one falls back to the extension.

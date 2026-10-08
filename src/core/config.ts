@@ -1,10 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { type CodemapConfig, parseCodemapConfig } from "src/core/config-schema";
+import type { ScipLanguage } from "src/core/languages";
+
+export type ScipIndexPaths = Partial<Record<ScipLanguage, string>>;
 
 export interface ResolvedCodemapConfig {
 	outDir: string;
 	exclude: string[];
+	scipIndexes: ScipIndexPaths;
 }
 
 export const DEFAULT_OUT_DIR = ".codemap";
@@ -41,6 +45,7 @@ export function loadConfig(rootDir: string, explicitConfigPath?: string): Resolv
 	return {
 		outDir: fileConfig.outDir ?? DEFAULT_OUT_DIR,
 		exclude: [...DEFAULT_EXCLUDE, ...(fileConfig.exclude ?? [])],
+		scipIndexes: fileConfig.scipIndexes ?? {},
 	};
 }
 
@@ -60,4 +65,21 @@ export function resolveAbsoluteOutDir(
 ): string {
 	const outDir = resolveOutDir(explicitOutDir, config);
 	return path.isAbsolute(outDir) ? outDir : path.join(rootDir, outDir);
+}
+
+// documentation/adr/0056 decision 2: an explicit path (a `--scip-index` flag, a `scipIndexes` tool
+// param) wins over the config file's for the same language; both are anchored to `rootDir`. The
+// `<rootDir>/index.scip` default applies later, in `generateMap`, only to languages left unset.
+export function resolveScipIndexes(
+	rootDir: string,
+	explicit: ScipIndexPaths | undefined,
+	config: Pick<ResolvedCodemapConfig, "scipIndexes">,
+): ScipIndexPaths {
+	const merged: ScipIndexPaths = { ...config.scipIndexes, ...explicit };
+	return Object.fromEntries(
+		Object.entries(merged).map(([language, indexPath]) => [
+			language,
+			path.isAbsolute(indexPath) ? indexPath : path.join(rootDir, indexPath),
+		]),
+	);
 }

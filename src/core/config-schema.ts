@@ -1,3 +1,4 @@
+import { SCIP_LANGUAGES } from "src/core/languages";
 import { z } from "zod";
 
 // The public-interface spec: JSON only (no YAML/`.js`/`.ts`), no `rootDir`
@@ -6,6 +7,8 @@ const codemapConfigSchema = z
 	.object({
 		outDir: z.string().optional(),
 		exclude: z.array(z.string()).optional(),
+		// Language -> SCIP index path, relative to the repo root (documentation/adr/0056).
+		scipIndexes: z.partialRecord(z.enum(SCIP_LANGUAGES), z.string()).optional(),
 	})
 	.strict();
 
