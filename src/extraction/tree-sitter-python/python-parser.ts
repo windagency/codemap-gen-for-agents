@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type { ExtractedSymbols } from "src/core/types";
 import type { Parser } from "src/extraction/parser";
 import { memoizeManifestLookup } from "src/extraction/tree-sitter-common/program-index";
@@ -14,7 +15,8 @@ import {
 	toRawImports,
 } from "src/extraction/tree-sitter-python/python-import-resolution";
 import { collectDeclaredSymbols } from "src/extraction/tree-sitter-python/python-symbol-classification";
-import Python from "tree-sitter-python";
+
+const require = createRequire(import.meta.url);
 
 function buildPythonIndex({ rootDir }: TreeSitterProgram) {
 	return {
@@ -23,7 +25,7 @@ function buildPythonIndex({ rootDir }: TreeSitterProgram) {
 }
 
 const PYTHON: TreeSitterLanguage<ReturnType<typeof buildPythonIndex>> = {
-	grammar: Python,
+	loadGrammar: () => require("tree-sitter-python") as typeof import("tree-sitter-python"),
 	collectDeclaredSymbols,
 	buildLanguageIndex: buildPythonIndex,
 	extractFile: ({ filePath, tree, entry }, { programFiles, index }, python) => {

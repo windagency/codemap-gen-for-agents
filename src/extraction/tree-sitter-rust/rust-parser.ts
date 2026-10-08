@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type { ExtractedSymbols } from "src/core/types";
 import type { Parser } from "src/extraction/parser";
 import { memoizeManifestLookup } from "src/extraction/tree-sitter-common/program-index";
@@ -17,7 +18,8 @@ import {
 	toRawImports,
 } from "src/extraction/tree-sitter-rust/rust-import-resolution";
 import { collectDeclaredSymbols } from "src/extraction/tree-sitter-rust/rust-symbol-classification";
-import Rust from "tree-sitter-rust";
+
+const require = createRequire(import.meta.url);
 
 function buildRustIndex({ rootDir, programFiles, index, treeByFile }: TreeSitterProgram) {
 	const crateFor = memoizeManifestLookup(rootDir, findNearestRustCrate);
@@ -29,7 +31,7 @@ function buildRustIndex({ rootDir, programFiles, index, treeByFile }: TreeSitter
 }
 
 const RUST: TreeSitterLanguage<ReturnType<typeof buildRustIndex>> = {
-	grammar: Rust,
+	loadGrammar: () => require("tree-sitter-rust") as typeof import("tree-sitter-rust"),
 	collectDeclaredSymbols,
 	buildLanguageIndex: buildRustIndex,
 	extractFile: ({ filePath, tree, entry }, { programFiles, index }, rust) => {

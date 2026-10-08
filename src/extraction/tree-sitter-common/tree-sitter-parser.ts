@@ -24,10 +24,13 @@ export interface TreeSitterFile {
 }
 
 // What one language contributes to the shared Go/Rust/Java/Python `Parser.parse()` skeleton:
-// its grammar, its declaration classifier, any extra whole-program index it needs, and its
+// its grammar loader, its declaration classifier, any extra whole-program index it needs, and its
 // per-file import/call resolution.
 export interface TreeSitterLanguage<LanguageIndex> {
-	grammar: TreeSitterParser.Language;
+	// Called only once there are files to extract, so a grammar whose native binding fails to load
+	// (`tree-sitter-java` on Linux arm64 without a build toolchain) only fails runs that contain
+	// that language.
+	loadGrammar: () => TreeSitterParser.Language;
 	collectDeclaredSymbols: (root: TreeSitterParser.SyntaxNode) => DeclaredItem[];
 	buildLanguageIndex: (program: TreeSitterProgram) => LanguageIndex;
 	extractFile: (
@@ -50,7 +53,7 @@ export function parseWithTreeSitter<LanguageIndex>(
 	if (extractFiles.length === 0) return [];
 
 	const parser = new TreeSitterParser();
-	parser.setLanguage(language.grammar);
+	parser.setLanguage(language.loadGrammar());
 
 	const parsed = buildProgramIndex(parser, programFiles, language.collectDeclaredSymbols);
 	const program: TreeSitterProgram = {
