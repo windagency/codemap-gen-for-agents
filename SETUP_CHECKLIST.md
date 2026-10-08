@@ -25,13 +25,14 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       `codemap-bootstrap` sandbox (see Repo bootstrap).
 - [x] `sbx policy init balanced` - the one-time global network policy
       (2026-10-07). Unmatched destinations ask for approval.
-- [ ] Approve the sandbox's `github` credential binding. The secret source
-      is stored (`sbx secret set github --command '/opt/homebrew/bin/gh auth
-      token'`), but sbx sends it only once a binding authorizes it: run
-      `sbx run --name codemap-bootstrap` in a terminal and accept the prompt.
-      Until then `git push` and `gh` inside the sandbox are unauthenticated;
-      so far every push ran on the host through `gh auth git-credential`
-      (still not approved, rechecked 2026-10-08).
+- [x] Sandbox `github` credential binding approved (2026-10-08): written to
+      `~/.config/sbx/credentials.yaml` as `bindings.github.apiKey.domains:
+      [api.github.com, github.com]`, the format sbx documents for approving
+      without the interactive prompt. The token stays in the keychain (secret
+      source `gh auth token`); the VM only sees `GH_TOKEN=proxy-managed`. sbx
+      reads bindings when it **creates** a sandbox, not on restart:
+      `codemap-bootstrap` had to be recreated, after which `gh api user`
+      returned `windagency` from inside it.
 - [x] `gh auth login --hostname github.com --git-protocol https --web` -
       `sbxenv.yaml` sources the sandbox's GitHub secret from `gh auth token`.
       This also unblocks every `gh api` re-check in this file.
