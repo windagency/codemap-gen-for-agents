@@ -8,6 +8,6 @@ This project follows [SemVer](https://semver.org/) - see [`documentation/SEMVER.
 
 ## Reporting a Vulnerability
 
-Email damien@wind-agency.com with a description of the issue and steps to reproduce it. Do not open a public GitHub issue for a suspected vulnerability.
+Report it privately through GitHub (the repository's Security tab → "Report a vulnerability"), or email damien@wind-agency.com, with a description of the issue and steps to reproduce it. Do not open a public GitHub issue for a suspected vulnerability.
 
 You should expect an acknowledgement within a few days.

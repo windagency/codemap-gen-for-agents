@@ -137,7 +137,7 @@ Four stages (Discovery → Parser → GraphBuilder → ModuleDetector) behind th
 | [`documentation/LLD.md`](documentation/LLD.md)                  | Maintainer        | Per-component interfaces, types, and implementation detail                                           |
 | [`documentation/FLOWS.md`](documentation/FLOWS.md)              | Both              | Step-by-step runtime flows (generate, incremental re-run, MCP read, HTML interaction)                |
 | [`documentation/adr/`](documentation/adr)                       | Maintainer        | Why each architectural decision was made, in order                                                   |
-| [`documentation/DEPLOYMENT.md`](documentation/DEPLOYMENT.md)    | Maintainer        | Commit-driven release pipeline: CI, commitlint, semantic-release, npm publish, signing               |
+| [`documentation/DEPLOYMENT.md`](documentation/DEPLOYMENT.md)    | Maintainer        | Commit-driven release pipeline: CI, commitlint, semantic-release, staged npm publish, signing        |
 | [`documentation/GIT.md`](documentation/GIT.md)                  | Contributor       | Git hook behaviour, commit signing setup, branch model                                               |
 | [`documentation/GITFLOW.md`](documentation/GITFLOW.md)          | Contributor       | Visual branch flow: `feat-`/`fix-` → `int` → `main`, `hotfix-` → `main` + `int`, `release/*.x` lines |
 | [`documentation/SEMVER.md`](documentation/SEMVER.md)            | Contributor       | SemVer policy, `CHANGELOG.md` mechanics                                                              |
