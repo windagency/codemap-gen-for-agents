@@ -62,6 +62,12 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       `release-notes-generator`'s writer 8; #4 husky hooks installed on the
       runner broke the release commit (`HUSKY: 0` at workflow level in
       `ci.yml` and `publish.yml`).
+- [x] 1.0.1 not published to npm (2026-10-08): the release run tagged `v1.0.1`
+      and pushed its release commit, then npm refused the publish with
+      `E403 OIDC permission denied for this action` - the Trusted Publisher
+      allowed staged publishes only. `v1.0.1` stays a git-only tag with a
+      GitHub Release marked "not published to npm" (not `latest`); the next
+      release is 1.0.2.
 - [x] File modes: 307 staged data files carried the executable bit, inherited
       from the working tree (found 2026-10-07). Stripped in the index and on
       disk. Only the Husky hooks and files starting with a shebang stay
@@ -107,21 +113,23 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
 
 ## CI secrets (Settings > Secrets and variables > Actions)
 
-- [x] Confirm `NPM_TOKEN` is set (confirmed via `gh secret list`, last
-      updated 2026-10-07T17:31:32Z, rechecked 2026-10-07) - `publish.yml` references it and will
-      fail the `semantic-release` step without it. This is a short-lived
-      bootstrap token, not a permanent one - npm has no way to configure
-      Trusted Publishing (OIDC) for a package that has never been published,
-      so the first release has to go out on a token before OIDC can take
-      over.
-- [ ] **npm Trusted Publishing** (operator, npmjs.com): package settings ->
-      Trusted Publisher -> GitHub Actions, repository
-      `windagency/codemap-gen-for-agents`, workflow `publish.yml`, environment
-      `npm`. Then the follow-up PR removes `NPM_TOKEN` from `publish.yml`, and
-      the operator deletes the npm token and the GitHub secret.
-      `@semantic-release/npm` already tries OIDC first ("Verifying OIDC
-      context" in every Publish run) and `publish.yml` requests
-      `id-token: write`. The next release is the first real test.
+- [x] `NPM_TOKEN` bootstrapped the first publish (1.0.0, 2026-10-07). It is no
+      longer referenced: `publish.yml` stages over OIDC (see below).
+- [ ] Delete the `NPM_TOKEN` repository secret
+      (`gh secret delete NPM_TOKEN -R windagency/codemap-gen-for-agents`) and
+      revoke the npm token itself on npmjs.com. A token that can publish
+      directly would bypass staging's 2FA approval.
+- [x] **npm Trusted Publishing** (2026-10-08): GitHub Actions, repository
+      `windagency/codemap-gen-for-agents`, workflow `publish.yml`,
+      environment `npm`, with "publish directly" and "manage dist-tags"
+      unchecked - staged publishes only, as npm recommends. `release.config.js`
+      packs the tarball (`@semantic-release/npm`, `npmPublish: false`) and
+      `@semantic-release/exec` runs `npm stage publish --provenance`. Checked
+      with `npm stage publish --dry-run` on a real tarball.
+- [ ] Approve each staged release with 2FA: `npm stage approve
+      @windagency/codemap-gen-for-agents@<version>`, or npmjs.com -> the
+      package's Staged Packages tab. 1.0.2 is the first one; its Publish log
+      should show the OIDC exchange succeeding and the version staged.
 
 ## Importing the rulesets (Settings > Rules > Rulesets)
 
@@ -291,8 +299,12 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       pins the same SHA as `pr-title.yml`.
 - [ ] **npm account 2FA** (operator): set to "Authorization and writes" on
       the account that owns the package. Not checkable from this repo.
-- [ ] **npm `0.0.0-stage` placeholder** (operator): npm created it during the
-      first publish ("Temporary package placeholder for staged publishing").
-      `latest` is 1.0.0, but it is listed. `npm unpublish
+- [ ] **npm `0.0.0-stage` placeholder** (operator): per npm's staged-publishing
+      docs, npm publishes this placeholder when a package is first staged. It is
+      listed even though `latest` is 1.0.0. `npm unpublish
       @windagency/codemap-gen-for-agents@0.0.0-stage` works until about
       2026-10-10 22:57 UTC; after that, `npm deprecate` it.
+- [ ] README: note that Linux arm64 installs need Python 3, make and a C++
+      compiler - `tree-sitter-java` 0.23.5's `linux-arm64` prebuild is an
+      x86-64 binary, so it builds from source there. Left out of this PR
+      because README.md has unrelated edits in progress.

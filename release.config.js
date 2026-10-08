@@ -82,7 +82,26 @@ export default {
 				changelogTitle: changelogTitle,
 			},
 		],
-		"@semantic-release/npm",
+		// Staged publishing: the npm Trusted Publisher only allows `npm stage publish`, so a release is never
+		// installable until a maintainer approves it with 2FA (`npm stage approve` or npmjs.com). This plugin
+		// still bumps package.json and packs the tarball; it doesn't publish, so it needs no npm credentials.
+		[
+			"@semantic-release/npm",
+			{
+				npmPublish: false,
+				tarballDir: "release-tarball",
+			},
+		],
+		// Stages the tarball packed above. The npm CLI authenticates through OIDC (Trusted Publishing); a
+		// maintenance-branch release goes to its own channel's dist-tag, as npm requires for non-latest versions.
+		[
+			"@semantic-release/exec",
+			{
+				publishCmd:
+					// biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release's own lodash template, rendered by @semantic-release/exec
+					'npm stage publish ./release-tarball/*-${nextRelease.version}.tgz --provenance --tag ${nextRelease.channel || "latest"}',
+			},
+		],
 		"@semantic-release/git",
 		[
 			"@semantic-release/github",
