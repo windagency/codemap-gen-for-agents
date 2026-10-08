@@ -1,13 +1,20 @@
 # One image for both the Docker Sandboxes workload (codemap-dev.yaml beside this file) and .devcontainer/.
+
+# Bootstrap CA bundle for apt over HTTPS. The slim base ships no ca-certificates, and installing them needs apt.
+FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS certs
+
 # Node matches package.json's volta pin. The digest is the multi-arch index, so amd64 and arm64 hosts both resolve it.
 FROM node:26.9.0-trixie-slim@sha256:3a771f83944bb763050c23c0225c260638c4b7899e7a72485ef75e5e570499e5
 
 # g++/make/python3: node-gyp fallback for the tree-sitter grammars if no prebuild matches.
 # openssh-client: ssh-add and ssh-keygen, for SSH commit signing through the forwarded agent.
 # socat: sbx relays the host agent over TCP (SSH_AUTH_SOCK_GATEWAY) and uses the image's socat to expose it at SSH_AUTH_SOCK.
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends ca-certificates curl g++ git less make openssh-client python3 socat \
-	&& rm -rf /var/lib/apt/lists/*
+# apt uses HTTPS: some networks mangle plain HTTP on port 80. The bootstrap bundle only serves this first install.
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /tmp/bootstrap-ca.crt
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|' /etc/apt/sources.list.d/debian.sources \
+	&& apt-get -o Acquire::https::CAInfo=/tmp/bootstrap-ca.crt update \
+	&& apt-get -o Acquire::https::CAInfo=/tmp/bootstrap-ca.crt install -y --no-install-recommends ca-certificates curl g++ git less make openssh-client python3 socat \
+	&& rm -rf /var/lib/apt/lists/* /tmp/bootstrap-ca.crt
 
 COPY install-tools.sh /tmp/install-tools.sh
 RUN bash /tmp/install-tools.sh && rm /tmp/install-tools.sh
