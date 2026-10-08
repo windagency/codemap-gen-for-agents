@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type { ExtractedSymbols } from "src/core/types";
 import type { Parser } from "src/extraction/parser";
 import { memoizeManifestLookup } from "src/extraction/tree-sitter-common/program-index";
@@ -14,14 +15,15 @@ import {
 } from "src/extraction/tree-sitter-go/go-import-resolution";
 import { findNearestGoModule } from "src/extraction/tree-sitter-go/go-mod";
 import { collectDeclaredSymbols } from "src/extraction/tree-sitter-go/go-symbol-classification";
-import Go from "tree-sitter-go";
+
+const require = createRequire(import.meta.url);
 
 function buildGoIndex({ rootDir }: TreeSitterProgram) {
 	return { goModuleFor: memoizeManifestLookup(rootDir, findNearestGoModule) };
 }
 
 const GO: TreeSitterLanguage<ReturnType<typeof buildGoIndex>> = {
-	grammar: Go,
+	loadGrammar: () => require("tree-sitter-go") as typeof import("tree-sitter-go"),
 	collectDeclaredSymbols,
 	buildLanguageIndex: buildGoIndex,
 	extractFile: ({ filePath, tree, entry }, { programFiles, index }, go) => {
