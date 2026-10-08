@@ -4,6 +4,9 @@ updates:
   - package-ecosystem: npm
     directory: /
     target-branch: int
+    # Fixture manifests are test inputs compared byte-for-byte against golden output, never installed.
+    exclude-paths:
+      - "fixtures/**"
     schedule:
       interval: weekly
     commit-message:

@@ -12,6 +12,9 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Deployment branches: main and release/** only. npm's Trusted Publisher for this package names this
+    # environment, so a publish token can only be minted for a run that passed its branch policy.
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -45,6 +48,18 @@ jobs:
       - run: pnpm test
 
       - run: pnpm run build
+
+      # Attached to the GitHub Release by @semantic-release/github (release.config.js `assets`). It lists the
+      # repository's whole lockfile, dev tooling included, not only the published package's dependencies.
+      - uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          syft-version: v1.54.1
+          config: .github/syft.yaml
+          upload-artifact: false
+          upload-release-assets: false
 
       # GITHUB_TOKEN can't be a ruleset bypass actor, so it can't push the release commit or tag past the
       # main/release/tags rulesets. This App can: it's on their bypass lists, see documentation/DEPLOYMENT.md.

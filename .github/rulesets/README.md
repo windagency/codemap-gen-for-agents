@@ -15,7 +15,7 @@ Six GitHub repository rulesets, plus the local and CI tooling that backs them.
 
 ## Before you import
 
-1. **Check the required status checks.** `main`, `release` and `integration` require `verify`, `lint-commits` and `gitleaks` (`ci.yml`) and `Validate PR title` (`pr-title.yml`). `main.json` also requires `allowed-merge-source` (`allowed-merge-source.yml`), and `integration.json` also requires `tdd-order` (`ci.yml`). A required name that no workflow reports blocks every merge, so import `main.json` only after `allowed-merge-source` has reported a green run on a `main`-targeting PR, and `integration.json` only after `tdd-order` has reported on an `int`-targeting PR.
+1. **Check the required status checks.** `main`, `release` and `integration` require `verify`, `lint-commits` and `gitleaks` (`ci.yml`), `Validate PR title` (`pr-title.yml`) and `dependency-review` (`dependency-review.yml`). `main.json` also requires `allowed-merge-source` (`allowed-merge-source.yml`), and `integration.json` also requires `tdd-order` (`ci.yml`). A required name that no workflow reports blocks every merge, so import `main.json` only after `allowed-merge-source` has reported a green run on a `main`-targeting PR, and `integration.json` only after `tdd-order` has reported on an `int`-targeting PR.
 2. **Add a `CODEOWNERS` file.** `main` and `release` require code owner review. Without the file, that rule has no effect.
 3. **Check your plan.** Private repositories need GitHub Pro, Team or Enterprise Cloud. On Free, rulesets apply to public repositories only.
 4. **Check your automation.** All work rulesets require signed commits. Bots that push unsigned commits will be rejected.

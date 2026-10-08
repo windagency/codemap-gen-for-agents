@@ -78,11 +78,10 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       that one call and back to active, diffed identical before/after.
 - [x] README.md's "1.0, published to npm" status line is now accurate (npm
       `latest` = 1.0.0, 2026-10-07).
-- [ ] Optional: `int` and `main` hold the same content under different commit
-      IDs after #6's squash merge, so the next `int` -> `main` PR lists #5's
-      commit again. Harmless with squash merges into `main` (the PR title is
-      the one commit that lands); merge `main` back into `int` through a PR if
-      the duplicate listing gets in the way.
+- [x] `int` re-synced with `main` (2026-10-08): `main` merged into `int` with a
+      real merge commit, in #10 and again at the start of the hardening PR.
+      Squash merges into `main` split their history each time; do the same
+      merge-commit PR whenever an `int` -> `main` PR shows a conflict.
 
 ## GitHub repo settings (Settings > General)
 
@@ -115,14 +114,14 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       Trusted Publishing (OIDC) for a package that has never been published,
       so the first release has to go out on a token before OIDC can take
       over.
-- [ ] The first publish is done (1.0.0, 2026-10-07), so this is unblocked:
-      delete this token, configure a
-      Trusted Publisher on npmjs.com (package settings -> Trusted Publisher
-      -> this repo + the exact `publish.yml` filename), then remove
-      `NPM_TOKEN` from both the GitHub secret and `publish.yml`'s `env:`
-      block. `@semantic-release/npm` invokes the `npm` CLI directly, which
-      auto-detects OIDC, and `publish.yml` already requests
-      `id-token: write` - no other workflow change needed.
+- [ ] **npm Trusted Publishing** (operator, npmjs.com): package settings ->
+      Trusted Publisher -> GitHub Actions, repository
+      `windagency/codemap-gen-for-agents`, workflow `publish.yml`, environment
+      `npm`. Then the follow-up PR removes `NPM_TOKEN` from `publish.yml`, and
+      the operator deletes the npm token and the GitHub secret.
+      `@semantic-release/npm` already tries OIDC first ("Verifying OIDC
+      context" in every Publish run) and `publish.yml` requests
+      `id-token: write`. The next release is the first real test.
 
 ## Importing the rulesets (Settings > Rules > Rulesets)
 
@@ -224,15 +223,18 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       needs. All 11 open alerts (2026-10-08) are `jackson-databind` in
       `fixtures/java-basics/pom.xml`, Java parser test data that is never
       built or shipped.
-- [ ] Decide on those fixture alerts: dismiss them as "not used in
-      production", or keep `fixtures/` out of Dependabot's scope.
-- [ ] **Dependabot security updates** (automatic fix PRs) are still disabled
-      (rechecked 2026-10-08). Enable in Settings > Code security; its PRs
-      would target `int` like `.github/dependabot.yml`'s version updates.
-- [ ] **Private vulnerability reporting** is disabled (rechecked 2026-10-08
-      via `gh api .../private-vulnerability-reporting` -> `enabled: false`).
-      Enable it in Settings > Code security, alongside `SECURITY.md`'s email
-      contact.
+- [x] The 11 fixture alerts were dismissed as `not_used` with a comment
+      (2026-10-08); 0 open. New advisories against `fixtures/` manifests will
+      open new alerts: an auto-triage rule with a manifest-path filter
+      (Settings > Advanced Security > Dependabot rules, UI only) would dismiss
+      them automatically - optional, operator.
+- [x] **Dependabot security updates** stay off, deliberately (2026-10-08):
+      GitHub opens them against the default branch only, from `dependabot/*`
+      branches with "Bump ..." titles, so `allowed-merge-source` and
+      `Validate PR title` reject every one. Alerts plus the weekly version
+      updates into `int` cover vulnerable dependencies instead.
+- [x] **Private vulnerability reporting** enabled (2026-10-08,
+      `PUT .../private-vulnerability-reporting` -> `enabled: true`).
 - [x] **Fork pull request workflow approval** - `first_time_contributors`
       (`gh api .../actions/permissions/fork-pr-contributor-approval`,
       2026-10-08), the minimum this item asked for.
@@ -249,15 +251,15 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
 - [x] **Dependency review and code scanning workflows**: added
       `dependency-review.yml` and `codeql.yml` (JavaScript/TypeScript and
       Actions). All workflows pass `actionlint` 1.7.12 (2026-10-07).
-- [ ] Make `dependency-review` a required check in `main.json`,
-      `release.json` and `integration.json`, then re-sync those rulesets (see
-      Importing the rulesets). Unblocked: it has passed on every PR since the
-      dependency graph was enabled (#1 failed its first run before that).
-- [ ] `CHANGELOG.md`: `@semantic-release/changelog` puts each release's notes
-      above the file's `# Changelog` title and intro, since `.releaserc.json`
-      sets no `changelogTitle`. `backlinks:check` then skips the file ("first
-      line is not a "# " title"). Setting `changelogTitle` alone moves the
-      notes above the intro paragraph instead; decide on the layout first.
+- [x] `dependency-review` is a required check in `main.json`,
+      `release.json` and `integration.json` (hardening PR, 2026-10-08).
+- [ ] Re-sync the live `main`, `release` and `integration` rulesets after the
+      hardening PR reaches `main`, keeping their bypass actors.
+- [x] `CHANGELOG.md` layout: the config moved to `release.config.js`, which
+      passes everything above the first released version as
+      `changelogTitle`, read at release time. New releases land below
+      `Unreleased`; the 1.0.0 notes were moved there. Checked with a simulated
+      1.1.0 write and `backlinks:check`.
 - [x] Confirm CodeQL **default setup** is off - `gh api .../code-scanning/
       default-setup` returned `state: not-configured` (2026-10-07), so
       `codeql.yml`'s advanced setup doesn't conflict.
@@ -265,13 +267,14 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       `main`, publishing results (needs the repo public, which it is).
 - [x] **Frozen lockfile in CI**: `ci.yml` and `publish.yml` now run
       `pnpm install --frozen-lockfile`.
-- [ ] **Node test matrix**: CI only tests the Volta pin (26.9.0), but
-      `engines` allows `^22.12.0 || ^24.0.0 || >=26.0.0`. Add a matrix that
-      covers the range, or narrow `engines` to what is actually tested.
-- [ ] **Publish environment**: add a GitHub Environment named `npm` with
-      branch restrictions. Move `NPM_TOKEN` into it as an environment secret,
-      and reference `environment: npm` in `publish.yml`. Do this before the
-      bootstrap token is removed.
+- [x] **Node test matrix**: `ci.yml`'s `node-compat` job builds and tests on
+      Node 22 and 24; `verify` covers the 26.x Volta pin. Both passed locally
+      first, so `engines` stays as declared. Not a required check yet: its
+      check names are `node-compat (22)` and `node-compat (24)`.
+- [x] **Publish environment**: `npm` environment created (2026-10-08),
+      deployment branches `main` and `release/**` only; `publish.yml` uses it.
+      `NPM_TOKEN` stays a repository secret until Trusted Publishing replaces
+      it, rather than being re-entered into the environment.
 - [x] **Scoped package name**: publishing as
       `@windagency/codemap-gen-for-agents` (operator's decision,
       2026-10-07), with `publishConfig.access: public`. The `windagency` npm
@@ -279,10 +282,17 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
 - [x] Confirm `NPM_TOKEN` can publish to the `@windagency` scope -
       confirmed by the operator on npmjs.com (2026-10-07); not checkable
       from here without the token.
-- [ ] **Build provenance and SBOM** (optional): add
-      `actions/attest-build-provenance` and an SBOM step at release time, as
-      GitHub Release assets.
+- [x] **SBOM**: `publish.yml` writes a CycloneDX SBOM with a pinned
+      `anchore/sbom-action` (syft v1.54.1, `.github/syft.yaml` excludes
+      `fixtures/`, `node_modules/`, `dist/`) and attaches it to each GitHub
+      Release. Build provenance for the npm tarball is npm's own provenance
+      attestation, already on 1.0.0.
 - [x] **Docs drift**: `.github/rulesets/README.md`'s PR-title snippet now
       pins the same SHA as `pr-title.yml`.
-- [ ] **npm account 2FA**: set to "Authorization and writes" on the account
-      that owns the package. Not checkable from this repo.
+- [ ] **npm account 2FA** (operator): set to "Authorization and writes" on
+      the account that owns the package. Not checkable from this repo.
+- [ ] **npm `0.0.0-stage` placeholder** (operator): npm created it during the
+      first publish ("Temporary package placeholder for staged publishing").
+      `latest` is 1.0.0, but it is listed. `npm unpublish
+      @windagency/codemap-gen-for-agents@0.0.0-stage` works until about
+      2026-10-10 22:57 UTC; after that, `npm deprecate` it.
