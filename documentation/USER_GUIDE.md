@@ -10,7 +10,7 @@ Generates `codemap.json` and `codemap.html` for a polyglot codebase - TypeScript
 npm install -g @windagency/codemap-gen-for-agents
 ```
 
-This exposes `codemap` and `codemap-mcp` on your `PATH`. To build from source instead:
+This exposes `codemap` and `codemap-mcp` on your `PATH`. On Linux arm64, the Java grammar has to compile during install - see the README's "Linux on arm64" note for the extra steps. To build from source instead:
 
 ```bash
 git clone https://github.com/windagency/codemap-gen-for-agents.git
@@ -19,7 +19,7 @@ pnpm install
 pnpm run build
 ```
 
-Node `^22.12.0 || ^24.0.0 || >=26.0.0` is required - this is what Vitest 5 (a devDependency) enforces at runtime. The dev toolchain itself is pinned to an exact Node version via Volta in `package.json`. Everything below invokes `codemap` / `codemap-mcp` directly; from a source checkout, run the built files under `dist/` instead, or `pnpm add -g .` to get the same bin names on your `PATH`.
+Node `^22.12.0 || ^24.0.0 || >=26.0.0` is required - `package.json`'s `engines`, which CI tests on Node 22, 24 and the 26.x Volta pin. The dev toolchain itself is pinned to an exact Node version via Volta in `package.json`. Everything below invokes `codemap` / `codemap-mcp` directly; from a source checkout, run the built files under `dist/` instead, or `pnpm add -g .` to get the same bin names on your `PATH`.
 
 ## CLI
 

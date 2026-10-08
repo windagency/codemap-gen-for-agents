@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 520" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <title>Git flow branches: feat- and fix- branches merge into int, int merges into main as one change, hotfix-urgent merges into main and then int, and release/1.x branches off main</title>
+  <title>Git flow branches: feat- and fix- branches merge into int, int merges into main as one squashed change, main is then merged back into int with a merge commit, hotfix-urgent merges into main and then int, and release/1.x branches off main</title>
   <style>
     :root {
       /* host-independent: safe against a host page whose true background
@@ -48,6 +48,12 @@
   <line x1="860" y1="170" x2="860" y2="120" stroke="var(--box-stroke)" stroke-width="1.25" stroke-dasharray="4 3"/>
 
   <!-- commits -->
+  <!-- after every squash promotion: merge main back into int with a merge commit -->
+  <path d="M580,170 C602,170 618,270 650,270" fill="none" stroke="var(--highlight-stroke)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <circle cx="650" cy="270" r="6" fill="var(--highlight-stroke)"/>
+  <text x="664" y="232" font-size="11" fill="var(--text-highlight)">sync: main → int</text>
+  <text x="664" y="246" font-size="10.5" fill="var(--text-muted)">(merge commit)</text>
+
   <circle cx="100" cy="170" r="6" fill="var(--box-stroke)"/>
   <circle cx="230" cy="360" r="6" fill="var(--box-stroke)"/>
   <circle cx="280" cy="360" r="6" fill="var(--box-stroke)"/>
