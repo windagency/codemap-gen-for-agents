@@ -16,6 +16,7 @@ const CHECK = process.argv.includes("--check");
 // fails the generator instead of silently shipping an unreviewed licence into the doc.
 const PERMISSIVE_ALLOWLIST = new Set([
 	"0BSD",
+	"(Apache-2.0 AND BSD-3-Clause)", // @bufbuild/protobuf: both parts are allowlisted on their own
 	"Apache-2.0",
 	"BSD-2-Clause",
 	"BSD-3-Clause",
@@ -30,10 +31,19 @@ const PERMISSIVE_ALLOWLIST = new Set([
 
 const LICENSE_FILENAMES = ["LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE", "LICENCE.md", "LICENCE.txt", "License"];
 
-function readLicenseFile(packageDir) {
+// For a package whose npm tarball ships no licence file at all. Each vendored file is copied, not
+// typed: @bufbuild/protobuf's is the upstream repo's LICENSE at tag v2.16.0, followed by the
+// Google BSD-3-Clause header the package itself carries in `dist/esm/wire/varint.js`.
+const VENDORED_LICENSE_FILES = {
+	"@bufbuild/protobuf": join(ROOT, "scripts", "vendored-licenses", "@bufbuild__protobuf.LICENSE"),
+};
+
+function readLicenseFile(packageDir, packageName) {
 	const entries = readdirSync(packageDir);
 	const match = LICENSE_FILENAMES.find((name) => entries.includes(name));
 	if (!match) {
+		const vendored = VENDORED_LICENSE_FILES[packageName];
+		if (vendored) return readFileSync(vendored, "utf8").replace(/\r\n/g, "\n").trimEnd();
 		throw new Error(`No LICENSE file found in ${packageDir}`);
 	}
 	// Some packages ship CRLF licence files (typescript, json-schema-typed). .gitattributes commits
@@ -138,7 +148,7 @@ const appendixSections = [...licenseGroups.entries()]
 	.sort(([a], [b]) => a.localeCompare(b))
 	.map(([license, entries]) => {
 		const names = entries.map((e) => e.name).sort();
-		const rawText = readLicenseFile(entries[0].path);
+		const rawText = readLicenseFile(entries[0].path, entries[0].name);
 		const appliesTo =
 			names.length === 1
 				? `Applies to: ${names[0]}. Reproduced verbatim from the package's own license file, copyright line included.`

@@ -1,4 +1,4 @@
-import { SYMBOL_KINDS } from "src/core/compose";
+import { SCIP_LANGUAGES, SYMBOL_KINDS } from "src/core/compose";
 import { z } from "zod";
 
 // `SYMBOL_KINDS` is `core/types.ts`'s single source of truth for `SymbolKind`'s member list
@@ -26,6 +26,12 @@ export const generateInputShape = {
 		.optional()
 		.describe(
 			"Includes test files (by filename or test-directory convention, per language) in the codemap; excluded by default.",
+		),
+	scipIndexes: z
+		.partialRecord(z.enum(SCIP_LANGUAGES), z.string())
+		.optional()
+		.describe(
+			"Language -> SCIP index path, relative to rootDir; overrides the config file's scipIndexes. Without one, <rootDir>/index.scip is read when present. Refines that language's call targets; files the index misses keep syntactic candidates.",
 		),
 };
 

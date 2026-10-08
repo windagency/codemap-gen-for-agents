@@ -29,6 +29,9 @@ export interface EpochInputs {
 	// Repo-relative path -> content of every dependency manifest and lockfile. External versions
 	// are read from these, so editing one must invalidate every cached file.
 	dependencyFiles: Record<string, string>;
+	// `<language>:<index path>` -> content hash of every SCIP index this run reads
+	// (documentation/adr/0056). Optional so a caller with no indexes keeps its old epoch inputs.
+	scipIndexes?: Record<string, string>;
 }
 
 function sortedEntries(record: Record<string, string>): [string, string][] {
@@ -44,6 +47,7 @@ export function computeEpoch(inputs: EpochInputs): string {
 		excludePatterns: [...inputs.excludePatterns].sort(),
 		includeTests: inputs.includeTests,
 		dependencyFiles: sortedEntries(inputs.dependencyFiles),
+		scipIndexes: sortedEntries(inputs.scipIndexes ?? {}),
 	});
 
 	return sha256Hex(payload);
