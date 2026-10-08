@@ -41,6 +41,10 @@ Commits pushed to this repository should be signed, so GitHub shows them as "Ver
 
 Setup steps (per repository clone, not global) live in [`GIT.md`](GIT.md#signed-commits) - this section covers only why it matters for releases: a release's version-bump push and tag creation happen outside any pull request, so every ruleset in `.github/rulesets/` requiring `required_signatures` would reject them the same as any other unsigned push, if not for the release automation's own bypass actor (see Required one-time setup below).
 
+## Release environment and SBOM
+
+`publish.yml`'s job runs in the `npm` GitHub Environment, whose deployment branches are `main` and `release/**` only. npm's Trusted Publisher for the package names that environment, so a publish credential is only issued to a run that passed the branch policy. Before semantic-release runs, `anchore/sbom-action` (syft, pinned) writes a CycloneDX SBOM of the repository's dependency manifests (`.github/syft.yaml` excludes `fixtures/`, `node_modules/` and `dist/`), and `@semantic-release/github` attaches it to the GitHub Release as an asset. It covers the whole lockfile, dev tooling included; the npm tarball's own build provenance is the provenance attestation above.
+
 ## Required one-time setup
 
 - **`NPM_TOKEN`** repository secret (Settings → Secrets and variables → Actions) - an npm automation token with publish rights to this package. Without it, `publish.yml`'s `semantic-release` step fails at its `verifyConditions` check before anything is published.

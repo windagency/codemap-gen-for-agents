@@ -88,6 +88,7 @@ export default {
 			"@semantic-release/github",
 			{
 				successComment: false,
+				assets: [{ path: "sbom.cdx.json", label: "SBOM (CycloneDX JSON, repository lockfile)" }],
 			},
 		],
 	],

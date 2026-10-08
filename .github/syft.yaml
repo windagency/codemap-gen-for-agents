@@ -1,0 +1,6 @@
+# Syft config for publish.yml's SBOM: the repository's own dependency manifests only.
+# fixtures/ holds parser test inputs (e.g. jackson-databind in a pom.xml) that are never installed or shipped.
+exclude:
+  - ./fixtures/**
+  - ./node_modules/**
+  - ./dist/**
