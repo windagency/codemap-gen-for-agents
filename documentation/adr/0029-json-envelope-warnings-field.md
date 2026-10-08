@@ -1,6 +1,6 @@
 # 0029: JSON envelope gains a top-level `warnings` field
 
-[Back to 0002-ts-compiler-api-over-tree-sitter.md](0002-ts-compiler-api-over-tree-sitter.md) • [Back to 0003-generator-pipeline-seams.md](0003-generator-pipeline-seams.md) • [Back to documentation/adr/README.md](README.md) • [Back to TESTING.md](../TESTING.md)
+[Back to 0002-ts-compiler-api-over-tree-sitter.md](0002-ts-compiler-api-over-tree-sitter.md) • [Back to 0003-generator-pipeline-seams.md](0003-generator-pipeline-seams.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to documentation/adr/README.md](README.md) • [Back to TESTING.md](../TESTING.md)
 
 ## Status
 
