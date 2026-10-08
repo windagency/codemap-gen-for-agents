@@ -25,13 +25,14 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
       `codemap-bootstrap` sandbox (see Repo bootstrap).
 - [x] `sbx policy init balanced` - the one-time global network policy
       (2026-10-07). Unmatched destinations ask for approval.
-- [ ] Approve the sandbox's `github` credential binding. The secret source
-      is stored (`sbx secret set github --command '/opt/homebrew/bin/gh auth
-      token'`), but sbx sends it only once a binding authorizes it: run
-      `sbx run --name codemap-bootstrap` in a terminal and accept the prompt.
-      Until then `git push` and `gh` inside the sandbox are unauthenticated;
-      so far every push ran on the host through `gh auth git-credential`
-      (still not approved, rechecked 2026-10-08).
+- [x] Sandbox `github` credential binding approved (2026-10-08): written to
+      `~/.config/sbx/credentials.yaml` as `bindings.github.apiKey.domains:
+      [api.github.com, github.com]`, the format sbx documents for approving
+      without the interactive prompt. The token stays in the keychain (secret
+      source `gh auth token`); the VM only sees `GH_TOKEN=proxy-managed`. sbx
+      reads bindings when it **creates** a sandbox, not on restart:
+      `codemap-bootstrap` had to be recreated, after which `gh api user`
+      returned `windagency` from inside it.
 - [x] `gh auth login --hostname github.com --git-protocol https --web` -
       `sbxenv.yaml` sources the sandbox's GitHub secret from `gh auth token`.
       This also unblocks every `gh api` re-check in this file.
@@ -115,10 +116,10 @@ below opens a browser or asks for a passphrase, so only the operator can run it.
 
 - [x] `NPM_TOKEN` bootstrapped the first publish (1.0.0, 2026-10-07). It is no
       longer referenced: `publish.yml` stages over OIDC (see below).
-- [ ] Delete the `NPM_TOKEN` repository secret
-      (`gh secret delete NPM_TOKEN -R windagency/codemap-gen-for-agents`) and
-      revoke the npm token itself on npmjs.com. A token that can publish
-      directly would bypass staging's 2FA approval.
+- [x] `NPM_TOKEN` retired (2026-10-08): the repository secret was deleted
+      (`gh secret list` now shows only `RELEASE_APP_PRIVATE_KEY`) and the npm
+      token itself was revoked on npmjs.com by the operator. No credential
+      remains that can publish directly and skip staging's 2FA approval.
 - [x] **npm Trusted Publishing** (2026-10-08): GitHub Actions, repository
       `windagency/codemap-gen-for-agents`, workflow `publish.yml`,
       environment `npm`, with "publish directly" and "manage dist-tags"
@@ -261,8 +262,9 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       Actions). All workflows pass `actionlint` 1.7.12 (2026-10-07).
 - [x] `dependency-review` is a required check in `main.json`,
       `release.json` and `integration.json` (hardening PR, 2026-10-08).
-- [ ] Re-sync the live `main`, `release` and `integration` rulesets after the
-      hardening PR reaches `main`, keeping their bypass actors.
+- [x] Live `main`, `release` and `integration` rulesets re-synced for
+      `dependency-review` (2026-10-08, after #12 reached `main`); each matched
+      its repo file afterwards, bypass actors unchanged.
 - [x] `CHANGELOG.md` layout: the config moved to `release.config.js`, which
       passes everything above the first released version as
       `changelogTitle`, read at release time. New releases land below
@@ -297,14 +299,30 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       attestation, already on 1.0.0.
 - [x] **Docs drift**: `.github/rulesets/README.md`'s PR-title snippet now
       pins the same SHA as `pr-title.yml`.
-- [ ] **npm account 2FA** (operator): set to "Authorization and writes" on
-      the account that owns the package. Not checkable from this repo.
-- [ ] **npm `0.0.0-stage` placeholder** (operator): per npm's staged-publishing
-      docs, npm publishes this placeholder when a package is first staged. It is
-      listed even though `latest` is 1.0.0. `npm unpublish
-      @windagency/codemap-gen-for-agents@0.0.0-stage` works until about
-      2026-10-10 22:57 UTC; after that, `npm deprecate` it.
-- [ ] README: note that Linux arm64 installs need Python 3, make and a C++
-      compiler - `tree-sitter-java` 0.23.5's `linux-arm64` prebuild is an
-      x86-64 binary, so it builds from source there. Left out of this PR
-      because README.md has unrelated edits in progress.
+- [x] **npm account 2FA**: "Authorization and writes" on `luckytiv`, the
+      account that owns the package (operator, 2026-10-08). Approving a staged
+      release requires it.
+- [x] **npm `0.0.0-stage` placeholder** removed (2026-10-08): npm creates it
+      when a package is first staged. The operator ran `npm unpublish
+      @windagency/codemap-gen-for-agents@0.0.0-stage` within npm's 72-hour
+      window; the registry now lists only 1.0.0 (`latest`).
+- [x] Dependabot ignores `conventional-changelog-conventionalcommits` `>=10.0.0`
+      (`.github/dependabot.yml`): v10 needs a changelog writer newer than
+      `@semantic-release/release-notes-generator` 14 ships, which broke #3's
+      release notes. #16 proposed it and was closed. Lift the rule once the
+      generator moves to writer 9.
+- [x] README notes the Linux arm64 install steps (2026-10-08): Python 3,
+      `make`, a C++ compiler, and `--allow-scripts=tree-sitter-java` on
+      npm 12. Checked in the linux-arm64 sandbox: npm 11 installs and maps
+      Java; npm 12 without the flag fails even on a TypeScript-only repo.
+- [ ] Follow-up (code): `codemap generate` loads every tree-sitter grammar up
+      front, so one broken native binding (here `tree-sitter-java` on Linux
+      arm64 without the build) fails runs that contain no Java at all. Loading
+      each grammar only when its language is present would confine the failure
+      to Java repositories.
+- [x] First Dependabot run reviewed (2026-10-08): #16 (`conventionalcommits`
+      10) and #14 (`@types/node` 26, breaks the build) closed, each with an
+      `ignore` rule in `.github/dependabot.yml`. #18 (`ignore` 7.0.12) got a
+      regenerated `THIRD_PARTY_LICENSES.md` commit. #13, #15 (dev patch/minor)
+      and #17, #19, #20 (`setup-node` 7, `checkout` 7, `pnpm/action-setup` 6;
+      release notes checked, CI green) are fine to merge.
