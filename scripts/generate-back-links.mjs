@@ -19,9 +19,6 @@ const CHECK = process.argv.includes("--check");
 // scripts/generate-third-party-licenses.mjs, so this script only prints the line to paste there.
 const PRINT_ONLY = new Set(["src/integration/skill/SKILL.md", "THIRD_PARTY_LICENSES.md"]);
 
-// Neither given back-links nor linked back to from the files it mentions.
-const EXCLUDED = new Set(["SETUP_CHECKLIST.md"]);
-
 // The root of the documentation tree: still linked back to, but never given a back-link line.
 const ROOT_DOC = "README.md";
 
@@ -31,7 +28,7 @@ const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclud
 })
 	.trim()
 	.split("\n")
-	.filter((file) => !file.startsWith("fixtures/") && !EXCLUDED.has(file))
+	.filter((file) => !file.startsWith("fixtures/"))
 	.sort();
 const fileSet = new Set(files);
 
