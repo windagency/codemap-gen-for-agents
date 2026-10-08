@@ -25,7 +25,7 @@ The packages this project's own `package.json` depends on directly.
 | @modelcontextprotocol/sdk | 1.31.0 | MIT | Anthropic, PBC |
 | graphology | 0.26.0 | MIT | - |
 | graphology-communities-louvain | 2.0.2 | MIT | - |
-| ignore | 7.0.11 | MIT | kael |
+| ignore | 7.0.12 | MIT | kael |
 | picomatch | 4.0.7 | MIT | Jon Schlinkert |
 | tree-sitter | 0.25.1 | MIT | Max Brunsfeld |
 | tree-sitter-go | 0.25.0 | MIT | Max Brunsfeld |
@@ -134,7 +134,7 @@ Every package resolved into the production tree (direct and transitive), as inst
 | hono | 4.13.12 | MIT | Yusuke Wada |
 | http-errors | 2.0.1 | MIT | Jonathan Ong |
 | iconv-lite | 0.6.3,0.7.3 | MIT | Alexander Shtuchkin |
-| ignore | 7.0.11 | MIT | kael |
+| ignore | 7.0.12 | MIT | kael |
 | ip-address | 10.7.2 | MIT | Beau Gunderson |
 | ipaddr.js | 1.9.1 | MIT | whitequark |
 | is-promise | 4.0.0 | MIT | ForbesLindesay |
