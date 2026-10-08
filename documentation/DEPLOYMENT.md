@@ -6,7 +6,7 @@ Releases are commit-driven, not hand-chosen: nobody edits `package.json`'s versi
 
 ## Pipeline overview
 
-![Pipeline overview: pushing or opening a PR against main, release/**, or int runs ci.yml's verify and lint-commits jobs plus pr-title.yml's Validate PR title check; feat-/fix- PRs into int also run ci.yml's tdd-order job; PRs into main also run allowed-merge-source.yml's check; merging into main or release/** triggers publish.yml, which re-runs verify then runs semantic-release, forking into npm registry, GitHub Release, and a version-bump git commit; merging into int produces no release](images/deployment-pipeline.svg)
+![Pipeline overview: pushing or opening a PR against main, release/**, or int runs ci.yml's verify, lint-commits, gitleaks and node-compat jobs, dependency-review.yml, and pr-title.yml's Validate PR title check; feat-/fix- PRs into int also run ci.yml's tdd-order job; PRs into main also run allowed-merge-source.yml's check; merging into main or release/** triggers publish.yml in the npm environment, which re-runs verify, writes an SBOM, then runs semantic-release, forking into a staged npm package that a maintainer approves with 2FA, a GitHub Release with the SBOM, and a version-bump git commit; merging into int produces no release](images/deployment-pipeline.svg)
 
 `publish.yml` always re-runs the full `verify` suite before releasing - a green PR merge isn't trusted as a release gate on its own, since `main` could in principle move between the PR's last CI run and the merge.
 
@@ -25,7 +25,7 @@ A release's shape depends entirely on well-formed commit messages, so malformed 
 
 `semantic-release`'s plugin pipeline (configured in [`release.config.js`](../release.config.js)), run in this fixed order:
 
-![Release decision: commit-analyzer maps fix to patch, feat to minor, a breaking-change marker on any type to major, and everything else to no release; its verdict gates release-notes-generator, changelog, npm, git, and github, run in that order](images/deployment-release-decision.svg)
+![Release decision: commit-analyzer maps fix to patch, feat to minor, a breaking-change marker on any type to major, and everything else to no release; its verdict gates release-notes-generator, changelog, npm (bumps the version and packs the tarball, no publish), exec (npm stage publish with provenance, approved by a maintainer with 2FA), git, and github (GitHub Release with notes and the SBOM), in that plugin order](images/deployment-release-decision.svg)
 
 The `releaseRules` in `release.config.js` spell out the same mapping `CODING_RULES/10` documents in prose (`fix` → PATCH, `feat` → MINOR, a breaking-change marker on any type → MAJOR); every other Conventional Commits type (`build`, `chore`, `ci`, `docs`, `style`, `refactor`, `perf`, `test`, `revert`) is explicitly marked as not release-triggering, so a docs-only or refactor-only push to `main` or `release/**` runs the full pipeline and simply produces no release.
 
@@ -33,7 +33,7 @@ The `releaseRules` in `release.config.js` spell out the same mapping `CODING_RUL
 
 npm only accepts staged publishes for this package: its Trusted Publisher (repository `windagency/codemap-gen-for-agents`, workflow `publish.yml`, environment `npm`) has neither "publish directly" nor "manage dist-tags" enabled, so `npm stage publish` is the one action CI can take. `release.config.js` sets `@semantic-release/npm` to `npmPublish: false` - it still writes the version into `package.json` and packs the tarball into `release-tarball/` - and `@semantic-release/exec` runs `npm stage publish <tarball> --provenance --tag <channel or latest>`. The npm CLI authenticates through OIDC; there is no npm token anywhere in the pipeline.
 
-A staged version is not installable until a maintainer approves it with 2FA, either `npm stage approve @windagency/codemap-gen-for-agents@<version>` or the package's Staged Packages tab on npmjs.com. `npm stage list` shows what is pending; `npm stage reject` drops a version. The GitHub Release and the `v<version>` tag already exist by then, so approve (or reject) promptly: until approval, npm `latest` still points at the previous version. Staging is what keeps a compromised dependency or Action in the Publish job from shipping a release on its own - it can stage, never publish.
+A staged version is not installable until a maintainer approves it with 2FA, either `npm stage approve <stage-id>` or the package's Staged Packages tab on npmjs.com. The stage ID is a UUID, not `package@version`: the Publish run's log prints it (`staged with id <uuid>`), and `npm stage list @windagency/codemap-gen-for-agents` lists pending ones. `npm stage view <stage-id>` shows a staged version before approving; `npm stage reject <stage-id>` drops it. The GitHub Release and the `v<version>` tag already exist by then, so approve (or reject) promptly: until approval, npm `latest` still points at the previous version. Staging is what keeps a compromised dependency or Action in the Publish job from shipping a release on its own - it can stage, never publish.
 
 ## npm provenance
 
@@ -50,6 +50,12 @@ Setup steps (per repository clone, not global) live in [`GIT.md`](GIT.md#signed-
 ## Release environment and SBOM
 
 `publish.yml`'s job runs in the `npm` GitHub Environment, whose deployment branches are `main` and `release/**` only. npm's Trusted Publisher for the package names that environment, so a publish credential is only issued to a run that passed the branch policy. Before semantic-release runs, `anchore/sbom-action` (syft, pinned) writes a CycloneDX SBOM of the repository's dependency manifests (`.github/syft.yaml` excludes `fixtures/`, `node_modules/` and `dist/`), and `@semantic-release/github` attaches it to the GitHub Release as an asset. It covers the whole lockfile, dev tooling included; the npm tarball's own build provenance is the provenance attestation above.
+
+Two environment settings keep CI's own tooling out of the release. `HUSKY: 0` (workflow-wide in `publish.yml` and `ci.yml`) stops `pnpm install`'s `prepare` script from installing git hooks on the runner, so `@semantic-release/git`'s release commit doesn't run the local `pre-commit`/`commit-msg` hooks. `NPM_CONFIG_IGNORE_SCRIPTS: "true"` on the semantic-release step stops `npm pack` from running `prepare` at all: `@semantic-release/npm` takes the last line of `npm pack`'s output as the tarball's file name, and husky's `HUSKY=0 skip install` message (no trailing newline) would otherwise be glued onto it.
+
+## When a release fails partway
+
+semantic-release pushes the release commit and the `v<version>` tag in its prepare phase, before it stages the package and creates the GitHub Release. If staging or the GitHub Release then fails, the tag already exists and semantic-release treats that version as released: re-running the workflow cuts nothing, and the next `fix:`/`feat:` gets the next version. That is what happened to 1.0.1: tagged and committed, refused by npm, never published - its GitHub Release is marked "not published to npm" by hand and 1.0.2 followed. A failure before the prepare phase finishes (as with the first 1.0.2 attempt, which stopped while packing the tarball) leaves nothing behind, and fixing the cause and re-running releases that same version.
 
 ## Required one-time setup
 

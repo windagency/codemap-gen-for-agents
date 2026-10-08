@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 820" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <title>Release decision: commit-analyzer maps fix to patch, feat to minor, a breaking-change marker on any type to major, and everything else to no release; its verdict gates release-notes-generator, changelog, npm, git, and github, run in that order</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 916" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Release decision: commit-analyzer maps fix to patch, feat to minor, a breaking-change marker on any type to major, and everything else to no release; its verdict gates release-notes-generator, changelog, npm (bumps the version and packs the tarball, no publish), exec (npm stage publish with provenance, approved by a maintainer with 2FA), git, and github (GitHub Release with notes and the SBOM), in that plugin order</title>
   <style>
     :root {
       /* host-independent: safe against a host page whose true background
@@ -69,22 +69,30 @@
   <!-- npm -->
   <rect x="150" y="470" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
   <text x="380" y="496" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">npm</text>
-  <text x="380" y="516" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">bumps package.json's version, npm publish (provenance on)</text>
+  <text x="380" y="516" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">bumps package.json's version, packs the tarball (npmPublish: false)</text>
 
   <line x1="380" y1="540" x2="380" y2="566" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
 
-  <!-- git -->
-  <rect x="150" y="566" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
-  <text x="380" y="592" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">git</text>
-  <text x="380" y="612" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">commits CHANGELOG.md + package.json, pushes it back ([skip ci])</text>
+  <!-- exec: staged publish -->
+  <rect x="150" y="566" width="460" height="70" rx="10" fill="var(--highlight-fill)" stroke="var(--highlight-stroke)" stroke-width="1.5"/>
+  <text x="380" y="592" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">exec</text>
+  <text x="380" y="612" font-size="11.5" fill="var(--text-highlight)" text-anchor="middle">npm stage publish --provenance · approved by a maintainer (2FA)</text>
 
   <line x1="380" y1="636" x2="380" y2="662" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
 
-  <!-- github -->
-  <rect x="150" y="662" width="460" height="70" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
-  <text x="380" y="688" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">github</text>
-  <text x="380" y="708" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">creates the GitHub Release from the tag semantic-release pushes</text>
+  <!-- git -->
+  <rect x="150" y="662" width="460" height="70" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="688" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">git</text>
+  <text x="380" y="708" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">commits CHANGELOG.md + package.json, pushes it back ([skip ci])</text>
 
-  <line x1="90" y1="766" x2="670" y2="766" stroke="var(--divider)" stroke-width="1"/>
-  <text x="380" y="792" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">semantic-release plugin order, per release.config.js</text>
+  <line x1="380" y1="732" x2="380" y2="758" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <!-- github -->
+  <rect x="150" y="758" width="460" height="70" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
+  <text x="380" y="784" font-size="14" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">github</text>
+  <text x="380" y="804" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">creates the GitHub Release (notes + SBOM) from the pushed tag</text>
+
+  <line x1="90" y1="862" x2="670" y2="862" stroke="var(--divider)" stroke-width="1"/>
+  <text x="380" y="880" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">semantic-release plugin order, per release.config.js</text>
+  <text x="380" y="898" font-size="10.5" fill="var(--text-muted)" text-anchor="middle">run in phases: prepare (changelog, npm, git push) before publish (exec, github)</text>
 </svg>

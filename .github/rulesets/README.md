@@ -100,7 +100,7 @@ Git hooks run on the developer's machine. Anyone can skip them with `git commit 
 | Commit message format | commitlint in `commit-msg` | PR title check, required status |
 | Branch names | `pre-push` script | `branch-naming.json` ruleset |
 | Source branch into `main` | None | `allowed-merge-source` required check |
-| Secrets | gitleaks in `pre-commit` | Secret scanning push protection |
+| Secrets | gitleaks in `pre-commit` | `gitleaks` required check (every PR commit), plus secret scanning push protection |
 | Code quality | lint-staged in `pre-commit` | `verify` required check (lint, test, build) |
 | Test-first order | None | `tdd-order` required check on `feat-*`/`fix-*` pull requests into `int` |
 | Signed commits | `commit.gpgsign` | `required_signatures` rule |
@@ -276,7 +276,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Add `@semantic-release/npm` to the plugins only if you publish to a registry.
+Add `@semantic-release/npm` to the plugins only if you publish to a registry. This repo's own `publish.yml` goes further than this minimal example: a release GitHub App token instead of `GITHUB_TOKEN` (see below), an `npm` environment, OIDC staged publishing approved with 2FA, and an SBOM - see `documentation/DEPLOYMENT.md`.
 
 #### Do not commit back to protected branches
 
@@ -293,4 +293,4 @@ This repo keeps `@semantic-release/git` anyway, so the version in `package.json`
 - `allowed-merge-source` checks the head branch name, not who authored it. Anyone with write access can create a branch named `hotfix-x` and open a PR into `main`. Review and the required-signatures rule are what stop an unreviewed change from landing.
 - `int` does not publish prereleases. Add it to the semantic-release `branches` with `prerelease` if you need them.
 - The release App's bypass on `main`/`release`/`tags` is scoped to whoever holds its private key, not to one workflow file. Keeping that key in `publish.yml`'s secrets only is what scopes it in practice - see "Do not commit back to protected branches".
-- Action versions in this project's workflows are pinned to a commit SHA (with a version-tag comment), not a mutable tag, specifically because the release workflow holds an npm publish token and push access - a moved tag on `actions/checkout`, `pnpm/action-setup` or similar would run attacker code with both. Re-pin when bumping versions; don't revert to a bare `@v4`-style tag for convenience.
+- Action versions in this project's workflows are pinned to a commit SHA (with a version-tag comment), not a mutable tag, specifically because the release workflow mints a release App token with push access and can stage npm releases - a moved tag on `actions/checkout`, `pnpm/action-setup` or similar would run attacker code with both. Re-pin when bumping versions; don't revert to a bare `@v4`-style tag for convenience.

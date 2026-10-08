@@ -67,7 +67,7 @@ Alternatively, work in a Docker Sandbox: `sbx env run` from the repo root (`sbxe
 - Regenerate third-party license manifest: `pnpm run licenses:generate` (run after a dependency change, then re-run `licenses:check`)
 - Check Markdown back-links: `pnpm run backlinks:check` (fails if any `[Back to X](path)` line under a `.md` title is stale; also runs in `.husky/pre-commit` and CI)
 - Regenerate Markdown back-links: `pnpm run backlinks:generate` (run after adding or removing a mention of a `.md` file, then stage the result)
-- Build: `pnpm run build` (`tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json`)
+- Build: `pnpm run build` (`tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json`, then copies `src/integration/skill/SKILL.md` into `dist/integration/skill/`)
 - Release: `pnpm run release` (`semantic-release` - CI-only, driven by `publish.yml`; never run locally, see `documentation/DEPLOYMENT.md`)
 
 If a command here is missing or stale, read `package.json` or the build config directly. Don't guess the flag. Fix this section once you've confirmed the real command.

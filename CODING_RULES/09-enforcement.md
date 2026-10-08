@@ -69,7 +69,7 @@ Load before opening or reviewing a PR.
 
 ## Tooling
 
-**Required:** Biome (lint + format), TypeScript, `arch-unit-ts` (or an equivalent architecture-boundary test - see `src/__tests__/architecture/dependency-direction.test.ts` for this repo's substitute), Husky, Vitest/Playwright, Zod, commitlint, semantic-release.
+**Required:** Biome (lint + format), TypeScript, `arch-unit-ts` (or an equivalent architecture-boundary test - see `src/__tests__/architecture/dependency-direction.test.ts` for this repo's substitute), Husky, Vitest/Playwright, Zod, commitlint, gitleaks, semantic-release.
 
 **Recommended:** default library picks for a practice that's already mandatory above. The practice is not optional; the specific package is. Swap it for an equivalent, don't drop it.
 
