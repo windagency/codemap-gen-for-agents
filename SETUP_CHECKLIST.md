@@ -310,7 +310,18 @@ From the review against `OSS_NPM_CHECKLIST.md` (rechecked 2026-10-04):
       `@semantic-release/release-notes-generator` 14 ships, which broke #3's
       release notes. #16 proposed it and was closed. Lift the rule once the
       generator moves to writer 9.
-- [ ] README: note that Linux arm64 installs need Python 3, make and a C++
-      compiler - `tree-sitter-java` 0.23.5's `linux-arm64` prebuild is an
-      x86-64 binary, so it builds from source there. Left out of this PR
-      because README.md has unrelated edits in progress.
+- [x] README notes the Linux arm64 install steps (2026-10-08): Python 3,
+      `make`, a C++ compiler, and `--allow-scripts=tree-sitter-java` on
+      npm 12. Checked in the linux-arm64 sandbox: npm 11 installs and maps
+      Java; npm 12 without the flag fails even on a TypeScript-only repo.
+- [ ] Follow-up (code): `codemap generate` loads every tree-sitter grammar up
+      front, so one broken native binding (here `tree-sitter-java` on Linux
+      arm64 without the build) fails runs that contain no Java at all. Loading
+      each grammar only when its language is present would confine the failure
+      to Java repositories.
+- [x] First Dependabot run reviewed (2026-10-08): #16 (`conventionalcommits`
+      10) and #14 (`@types/node` 26, breaks the build) closed, each with an
+      `ignore` rule in `.github/dependabot.yml`. #18 (`ignore` 7.0.12) got a
+      regenerated `THIRD_PARTY_LICENSES.md` commit. #13, #15 (dev patch/minor)
+      and #17, #19, #20 (`setup-node` 7, `checkout` 7, `pnpm/action-setup` 6;
+      release notes checked, CI green) are fine to merge.
