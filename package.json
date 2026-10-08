@@ -74,7 +74,7 @@
 		"@semantic-release/release-notes-generator": "^14.1.1",
 		"@types/d3": "^7.4.3",
 		"@types/jsdom": "^30.0.0",
-		"@types/node": "^24.0.0",
+		"@types/node": "^26.6.4",
 		"@types/picomatch": "^4.0.3",
 		"axe-core": "^4.13.0",
 		"conventional-changelog-conventionalcommits": "^9.3.1",
