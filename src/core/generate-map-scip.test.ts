@@ -72,6 +72,16 @@ describe("generateMap with a SCIP index", () => {
 		expect(map.warnings[0]).toMatch(/^Unreadable SCIP index .*missing\.scip: /);
 	});
 
+	it("names an unreadable index by its repo-relative path, even through a symlinked root", () => {
+		const linkedRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "codemap-scip-link-")), "repo");
+		fs.symlinkSync(copyFixture(), linkedRoot, "dir");
+
+		const map = generate(linkedRoot, { scipIndexes: { python: path.join(linkedRoot, "indexes", "missing.scip") } });
+
+		expect(map.warnings).toHaveLength(1);
+		expect(map.warnings[0]).toMatch(/^Unreadable SCIP index indexes\/missing\.scip: /);
+	});
+
 	it("prefers an explicit index over <rootDir>/index.scip, and finds its documents from a subdirectory", () => {
 		const rootDir = copyFixture();
 		const elsewhere = path.join(rootDir, "build", "python.scip");
