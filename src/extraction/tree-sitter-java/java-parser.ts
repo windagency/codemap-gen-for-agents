@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type { ExtractedSymbols } from "src/core/types";
 import type { Parser } from "src/extraction/parser";
 import { memoizeManifestLookup } from "src/extraction/tree-sitter-common/program-index";
@@ -17,7 +18,8 @@ import {
 } from "src/extraction/tree-sitter-java/java-import-resolution";
 import { findNearestJavaProject } from "src/extraction/tree-sitter-java/java-project";
 import { collectDeclaredSymbols } from "src/extraction/tree-sitter-java/java-symbol-classification";
-import Java from "tree-sitter-java";
+
+const require = createRequire(import.meta.url);
 
 function buildJavaIndex({ rootDir, programFiles, index, treeByFile }: TreeSitterProgram) {
 	return {
@@ -33,7 +35,7 @@ function buildJavaIndex({ rootDir, programFiles, index, treeByFile }: TreeSitter
 }
 
 const JAVA: TreeSitterLanguage<ReturnType<typeof buildJavaIndex>> = {
-	grammar: Java,
+	loadGrammar: () => require("tree-sitter-java") as typeof import("tree-sitter-java"),
 	collectDeclaredSymbols,
 	buildLanguageIndex: buildJavaIndex,
 	extractFile: ({ filePath, tree, entry }, { index }, java) => {
