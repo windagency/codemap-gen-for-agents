@@ -19,16 +19,13 @@ const CHECK = process.argv.includes("--check");
 // scripts/generate-third-party-licenses.mjs, so this script only prints the line to paste there.
 const PRINT_ONLY = new Set(["src/integration/skill/SKILL.md", "THIRD_PARTY_LICENSES.md"]);
 
-// Neither given back-links nor linked back to from the files it mentions.
-const EXCLUDED = new Set(["SETUP_CHECKLIST.md"]);
-
 const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "*.md"], {
 	cwd: ROOT,
 	encoding: "utf8",
 })
 	.trim()
 	.split("\n")
-	.filter((file) => !file.startsWith("fixtures/") && !EXCLUDED.has(file))
+	.filter((file) => !file.startsWith("fixtures/"))
 	.sort();
 const fileSet = new Set(files);
 
