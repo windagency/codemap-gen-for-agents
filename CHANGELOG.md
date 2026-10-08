@@ -18,6 +18,12 @@ Versioned entries below this point are written by `semantic-release` (`@semantic
 
 ### Removed
 
+## [1.0.1](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.0...v1.0.1) (2026-10-08)
+
+### Bug Fixes
+
+* keep release notes below the changelog header ([#12](https://github.com/windagency/codemap-gen-for-agents/issues/12)) ([5b25dd8](https://github.com/windagency/codemap-gen-for-agents/commit/5b25dd8b80e1aba889c768983df7ba318aa7c7f8))
+
 ## 1.0.0 (2026-10-07)
 
 ### Features
