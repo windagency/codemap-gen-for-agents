@@ -18,6 +18,13 @@ Versioned entries below this point are written by `semantic-release` (`@semantic
 
 ### Removed
 
+## [1.0.2](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.1...v1.0.2) (2026-10-08)
+
+### Bug Fixes
+
+* keep husky output out of the release tarball name ([#38](https://github.com/windagency/codemap-gen-for-agents/issues/38)) ([ac1088e](https://github.com/windagency/codemap-gen-for-agents/commit/ac1088ee14b408c48cf52365986f015b9627cd13))
+* update runtime dependencies and dev tooling ([#37](https://github.com/windagency/codemap-gen-for-agents/issues/37)) ([f2a6fa9](https://github.com/windagency/codemap-gen-for-agents/commit/f2a6fa98e21deb6b0a61165662e2e26451c71438))
+
 ## [1.0.1](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.0...v1.0.1) (2026-10-08)
 
 ### Bug Fixes

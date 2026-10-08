@@ -71,6 +71,10 @@ jobs:
           permission-contents: write
           permission-issues: write
 
+      # NPM_CONFIG_IGNORE_SCRIPTS: @semantic-release/npm takes the last line of `npm pack`'s stdout as the tarball
+      # name, and pack runs `prepare` (husky), whose "HUSKY=0 skip install" has no trailing newline and lands on
+      # that line. dist/ is already built above; no other lifecycle script matters to the release.
       - run: pnpm exec semantic-release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          NPM_CONFIG_IGNORE_SCRIPTS: "true"

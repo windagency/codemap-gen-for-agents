@@ -1,6 +1,6 @@
 {
 	"name": "@windagency/codemap-gen-for-agents",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Code-map generator for AI coding agents",
 	"type": "module",
 	"license": "MIT",
