@@ -34,7 +34,8 @@
 					{ "context": "lint-commits" },
 					{ "context": "Validate PR title" },
 					{ "context": "allowed-merge-source" },
-					{ "context": "gitleaks" }
+					{ "context": "gitleaks" },
+					{ "context": "dependency-review" }
 				]
 			}
 		}
