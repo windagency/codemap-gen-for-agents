@@ -19,6 +19,9 @@ const CHECK = process.argv.includes("--check");
 // scripts/generate-third-party-licenses.mjs, so this script only prints the line to paste there.
 const PRINT_ONLY = new Set(["src/integration/skill/SKILL.md", "THIRD_PARTY_LICENSES.md"]);
 
+// The root of the documentation tree: still linked back to, but never given a back-link line.
+const ROOT_DOC = "README.md";
+
 const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "*.md"], {
 	cwd: ROOT,
 	encoding: "utf8",
@@ -93,7 +96,8 @@ for (const [target, refs] of referrers) {
 	while (bodyStart < lines.length && (lines[bodyStart] === "" || lines[bodyStart].startsWith(BACK_LINK_PREFIX))) {
 		bodyStart++;
 	}
-	const content = [lines[0], "", backLinkLine(target), "", ...lines.slice(bodyStart)].join("\n");
+	const header = target === ROOT_DOC ? [lines[0], ""] : [lines[0], "", backLinkLine(target), ""];
+	const content = [...header, ...lines.slice(bodyStart)].join("\n");
 	if (content === lines.join("\n")) continue;
 	if (CHECK) stale.push(target);
 	else writeFileSync(join(ROOT, target), content);

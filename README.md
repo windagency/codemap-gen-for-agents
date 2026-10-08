@@ -1,7 +1,5 @@
 # codemap-gen-for-agents
 
-[Back to 02-language-convention.md](CODING_RULES/02-language-convention.md) • [Back to 10-commits-and-versioning.md](CODING_RULES/10-commits-and-versioning.md) • [Back to GIT.md](documentation/GIT.md) • [Back to TESTING.md](documentation/TESTING.md) • [Back to USER_GUIDE.md](documentation/USER_GUIDE.md) • [Back to SECURITY.md](SECURITY.md)
-
 ![codemap-gen-for-agents - Statically analyses a polyglot codebase and produces a code-map an AI agent can use as context, and a human can browse](documentation/images/social-preview.png)
 
 [![npm version](https://img.shields.io/npm/v/@windagency/codemap-gen-for-agents)](https://www.npmjs.com/package/@windagency/codemap-gen-for-agents)
@@ -12,7 +10,7 @@
 
 Point it at a repo - TypeScript/JavaScript, Go, Rust, Java, Python, any mix in one place - and it statically analyses the whole thing into one graph, then hands you two views of it:
 
-|                       |                                                                               |
+| Script                | Description                                                                   |
 | --------------------- | ----------------------------------------------------------------------------- |
 | 🤖 **`codemap.json`** | Machine-readable. Context for Claude Code, Claude Desktop, or any MCP client. |
 | 🧑‍💻 **`codemap.html`** | One offline file. Open it in a browser and click around.                      |
@@ -51,8 +49,8 @@ This puts `codemap` and `codemap-mcp` on your `PATH`. Yarn Berry (v2+) has no gl
 
 **Or run it without installing.** This package ships two bins (`codemap`, `codemap-mcp`), neither named after the package itself, so every runner needs an explicit `--package`/`-p` flag to say which one to run:
 
-| Runner            | Command                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------ |
+| Runner            | Command                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
 | npm (`npx`)       | `npx -p @windagency/codemap-gen-for-agents codemap generate --root . --out .codemap`             |
 | pnpm              | `pnpm dlx --package=@windagency/codemap-gen-for-agents codemap generate --root . --out .codemap` |
 | Yarn (Berry, v2+) | `yarn dlx -p @windagency/codemap-gen-for-agents codemap generate --root . --out .codemap`        |
