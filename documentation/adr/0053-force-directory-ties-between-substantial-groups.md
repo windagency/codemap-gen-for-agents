@@ -1,6 +1,6 @@
 # 0053: A directory tie between substantial groups is resolved, not skipped
 
-[Back to LLD.md](../LLD.md)
+[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md)
 
 ## Status
 
