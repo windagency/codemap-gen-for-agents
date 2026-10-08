@@ -18,6 +18,12 @@ Versioned entries below this point are written by `semantic-release` (`@semantic
 
 ### Removed
 
+## [1.0.3](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.2...v1.0.3) (2026-10-08)
+
+### Bug Fixes
+
+* load each tree-sitter grammar only when its language has files to extract ([#45](https://github.com/windagency/codemap-gen-for-agents/issues/45)) ([65115cb](https://github.com/windagency/codemap-gen-for-agents/commit/65115cbbd09b4628ccfb692541a279dd4c58a3c9))
+
 ## [1.0.2](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.1...v1.0.2) (2026-10-08)
 
 ### Bug Fixes
