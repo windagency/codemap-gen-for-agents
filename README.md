@@ -47,6 +47,8 @@ npm install -g @windagency/codemap-gen-for-agents    # or: pnpm add -g / yarn gl
 
 This puts `codemap` and `codemap-mcp` on your `PATH`. Yarn Berry (v2+) has no global-install command at all - use `yarn dlx` below instead, every time.
 
+**Linux on arm64:** `tree-sitter-java` 0.23.5 ships an x86-64 binary as its `linux-arm64` prebuild, so the Java grammar has to compile from source during install. Have Python 3, `make` and a C++ compiler installed first (Debian/Ubuntu: `apt install python3 make g++`). npm 12 also skips install scripts for global installs, so allow that one build explicitly: `npm install -g --allow-scripts=tree-sitter-java @windagency/codemap-gen-for-agents`. Without it, `codemap generate` fails on every repository, Java or not. Every other platform's prebuild matches its architecture, so nothing extra is needed elsewhere, and npm 11 runs the build without the flag.
+
 **Or run it without installing.** This package ships two bins (`codemap`, `codemap-mcp`), neither named after the package itself, so every runner needs an explicit `--package`/`-p` flag to say which one to run:
 
 | Runner            | Command                                                                              |
