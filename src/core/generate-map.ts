@@ -85,7 +85,7 @@ function resolveIndexSources(rootDir: string, scipIndexes: ScipIndexPaths): Inde
 	const hasDefault = fs.existsSync(defaultPath);
 	return SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
 		const indexPath = scipIndexes[language] ?? (hasDefault ? defaultPath : undefined);
-		return indexPath === undefined ? [] : [{ language, indexPath }];
+		return indexPath === undefined ? [] : [{ language, indexPath: path.resolve(indexPath) }];
 	});
 }
 
@@ -105,9 +105,16 @@ function hashIndexSources(indexSources: IndexSource[]): Record<string, string> {
 	);
 }
 
+// Repo-relative when the path sits under the canonical root or the root as the caller gave it
+// (the two differ behind a symlink); otherwise left absolute.
+function displayPath(absolutePath: string, roots: string[]): string {
+	const root = roots.find((candidate) => absolutePath.startsWith(`${candidate}${path.sep}`));
+	return root === undefined ? absolutePath : toPosixRelative(root, absolutePath);
+}
+
 // A file's stored fallback reason, cached or fresh, plus each index the resolver could not read.
 function collectIndexWarnings(
-	rootDir: string,
+	roots: string[],
 	symbols: ExtractedSymbols[],
 	unreadableIndexes: { indexPath: string; reason: string }[],
 ): IndexWarning[] {
@@ -117,7 +124,7 @@ function collectIndexWarnings(
 		),
 		...unreadableIndexes.map(({ indexPath, reason }) => ({
 			reason: "index-unreadable" as const,
-			file: path.isAbsolute(indexPath) ? toPosixRelative(rootDir, indexPath) : indexPath,
+			file: displayPath(indexPath, roots),
 			detail: reason,
 		})),
 	];
@@ -465,7 +472,11 @@ export function createCodemapGenerator(
 			})),
 			...unparseable.map((file) => ({ file, reason: "unparseable" as const })),
 		];
-		const indexWarnings = collectIndexWarnings(rootDir, symbolsForGraph, unreadableIndexes);
+		const indexWarnings = collectIndexWarnings(
+			[rootDir, path.resolve(inputRootDir)],
+			symbolsForGraph,
+			unreadableIndexes,
+		);
 
 		const { json, html } = timer.run("transform", () => ({
 			json: jsonTransformer.transform(clusteredGraph, {
