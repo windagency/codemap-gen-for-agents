@@ -12,6 +12,10 @@ updates:
       # writer 9 from v10 on and breaks release notes (#3, #16). Lift once the generator moves to writer 9.
       - dependency-name: conventional-changelog-conventionalcommits
         versions: [">=10.0.0"]
+      # Types track the engines floor, not the newest Node: a newer major describes APIs that Node 22/24 lack,
+      # and 26's stricter crypto typings break the build (#14). Patch/minor updates still come through.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     commit-message:
