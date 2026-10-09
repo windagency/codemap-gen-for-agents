@@ -69,10 +69,27 @@ function candidateFor(
 	return symbol ? { filePath: definition.filePath, localId: symbol.localId } : undefined;
 }
 
-// A call with matching occurrences keeps only the Symbols the index resolves them to. When none
-// of them is a Symbol in this map (a stdlib call, a nested function), the call is dropped: the
-// index has shown tree-sitter's same-name guesses were wrong. A call with no matching occurrence,
-// or one whose target is defined in a stale file, keeps tree-sitter's candidates unchanged.
+// The Symbols the occurrences resolve to, or undefined when one names an in-repo definition that
+// is not a Symbol: the index cannot say which implementation of it runs.
+function resolvedCandidates(
+	occurrences: ScipOccurrence[],
+	definitions: ScipDefinitions,
+	symbolsByFile: ReadonlyMap<string, ExtractedSymbols>,
+): RawCallCandidate[] | undefined {
+	const candidates: RawCallCandidate[] = [];
+	for (const occurrence of occurrences) {
+		const candidate = candidateFor(occurrence, definitions, symbolsByFile);
+		if (candidate) candidates.push(candidate);
+		else if (definitions.has(occurrence.symbol)) return undefined;
+	}
+	return candidates;
+}
+
+// A call with matching occurrences keeps only the Symbols the index resolves them to. When every
+// one resolves outside the repo (a stdlib or dependency call), the call is dropped: the index has
+// shown tree-sitter's same-name guesses were wrong. A call with no matching occurrence, one whose
+// target is defined in a stale file, and one whose in-repo target is not a Symbol (a Go interface
+// method, a Rust trait method, a nested function) keeps tree-sitter's candidates unchanged.
 export function refineCalls(
 	file: ExtractedSymbols,
 	document: ScipDocument,
@@ -87,10 +104,8 @@ export function refineCalls(
 		const targetIsStale = occurrences.some((occurrence) => definitions.get(occurrence.symbol)?.stale);
 		if (occurrences.length === 0 || targetIsStale) return [call];
 
-		const candidates = occurrences.flatMap((occurrence) => {
-			const candidate = candidateFor(occurrence, definitions, symbolsByFile);
-			return candidate ? [candidate] : [];
-		});
+		const candidates = resolvedCandidates(occurrences, definitions, symbolsByFile);
+		if (candidates === undefined) return [call];
 		return candidates.length === 0 ? [] : [{ ...call, candidates: dedupeAndSortCandidates(candidates) }];
 	});
 }
