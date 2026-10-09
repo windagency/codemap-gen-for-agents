@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DEFAULT_OUT_DIR, loadConfig, resolveAbsoluteOutDir, resolveOutDir } from "src/core/config";
+import { DEFAULT_OUT_DIR, loadConfig, resolveAbsoluteOutDir, resolveOutDir, resolveScipIndexes } from "src/core/config";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("loadConfig", () => {
@@ -75,6 +75,52 @@ describe("loadConfig", () => {
 		expect(config.outDir).toBe(DEFAULT_OUT_DIR);
 	});
 
+	it("reads scipIndexes from the config file, defaulting to none", () => {
+		expect(loadConfig(rootDir).scipIndexes).toStrictEqual({});
+
+		fs.writeFileSync(
+			path.join(rootDir, "codemap.config.json"),
+			JSON.stringify({ scipIndexes: { python: "build/index.scip" } }),
+		);
+
+		expect(loadConfig(rootDir).scipIndexes).toStrictEqual({ python: "build/index.scip" });
+	});
+
+	it("reads a Go scipIndexes entry from the config file", () => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ scipIndexes: { go: "go.scip" } }));
+
+		expect(loadConfig(rootDir).scipIndexes).toStrictEqual({ go: "go.scip" });
+	});
+
+	it("reads a Rust scipIndexes entry from the config file", () => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ scipIndexes: { rust: "rust.scip" } }));
+
+		expect(loadConfig(rootDir).scipIndexes).toStrictEqual({ rust: "rust.scip" });
+	});
+
+	it("rejects a scipIndexes language with no SCIP support yet", () => {
+		fs.writeFileSync(
+			path.join(rootDir, "codemap.config.json"),
+			JSON.stringify({ scipIndexes: { java: "index.scip" } }),
+		);
+
+		expect(() => loadConfig(rootDir)).toThrow(/scipIndexes/);
+	});
+
+	it("reads indexerTimeoutSeconds from the config file, defaulting to 600", () => {
+		expect(loadConfig(rootDir).indexerTimeoutSeconds).toBe(600);
+
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ indexerTimeoutSeconds: 30 }));
+
+		expect(loadConfig(rootDir).indexerTimeoutSeconds).toBe(30);
+	});
+
+	it.each([0, -5, 1.5])("rejects indexerTimeoutSeconds %s", (value) => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ indexerTimeoutSeconds: value }));
+
+		expect(() => loadConfig(rootDir)).toThrow(/indexerTimeoutSeconds/);
+	});
+
 	it("throws a clear error when the config file's shape fails validation", () => {
 		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ outDir: 123 }));
 
@@ -109,5 +155,22 @@ describe("resolveAbsoluteOutDir", () => {
 
 	it("leaves an already-absolute outDir untouched", () => {
 		expect(resolveAbsoluteOutDir("/repo", "/elsewhere/out", {})).toBe("/elsewhere/out");
+	});
+});
+
+describe("resolveScipIndexes", () => {
+	it("lets an explicit path win per language and anchors relative paths to rootDir", () => {
+		expect(
+			resolveScipIndexes("/repo", { python: "explicit.scip" }, { scipIndexes: { python: "configured.scip" } }),
+		).toStrictEqual({
+			python: path.join("/repo", "explicit.scip"),
+		});
+		expect(resolveScipIndexes("/repo", undefined, { scipIndexes: { python: "configured.scip" } })).toStrictEqual({
+			python: path.join("/repo", "configured.scip"),
+		});
+		expect(resolveScipIndexes("/repo", { python: "/abs/index.scip" }, { scipIndexes: {} })).toStrictEqual({
+			python: "/abs/index.scip",
+		});
+		expect(resolveScipIndexes("/repo", undefined, { scipIndexes: {} })).toStrictEqual({});
 	});
 });

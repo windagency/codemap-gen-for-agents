@@ -119,6 +119,36 @@ describe("createMcpServer", () => {
 		expect(Object.keys(readTool?.inputSchema.properties ?? {})).not.toContain("force");
 	});
 
+	it("exposes runIndexers on generate's schema but not on read's, since read never runs indexers", async () => {
+		const client = await connectedClient();
+
+		const { tools } = await client.listTools();
+		const generateTool = tools.find((tool) => tool.name === "generate");
+		const readTool = tools.find((tool) => tool.name === "read");
+
+		expect(Object.keys(generateTool?.inputSchema.properties ?? {})).toContain("runIndexers");
+		expect(Object.keys(readTool?.inputSchema.properties ?? {})).not.toContain("runIndexers");
+	});
+
+	it("exposes scipIndexes on both generate's and read's schemas", async () => {
+		const client = await connectedClient();
+
+		const { tools } = await client.listTools();
+
+		for (const name of ["generate", "read"]) {
+			const tool = tools.find((candidate) => candidate.name === name);
+			expect(Object.keys(tool?.inputSchema.properties ?? {})).toContain("scipIndexes");
+		}
+	});
+
+	it("rejects a scipIndexes language with no SCIP support yet", async () => {
+		const client = await connectedClient();
+
+		const raw = await client.callTool({ name: "generate", arguments: { scipIndexes: { java: "index.scip" } } });
+
+		expect(raw.isError).toBe(true);
+	});
+
 	// ADR-0022: logging is wired in at the CLI/MCP entry points. A thrown error from a tool
 	// handler must reach the structured `Logger` the same way `run-entrypoint.ts` does for
 	// CLI/Skill, without changing the MCP SDK's own `isError` client-facing response shape.
