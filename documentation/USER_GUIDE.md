@@ -1,6 +1,6 @@
 # User guide
 
-[Back to README.md](../README.md) • [Back to 02-language-convention.md](../CODING_RULES/02-language-convention.md) • [Back to 0027-tree-sitter-multi-language-extraction.md](adr/0027-tree-sitter-multi-language-extraction.md) • [Back to 0039-execution-flow-module-ordering.md](adr/0039-execution-flow-module-ordering.md) • [Back to 0044-exclude-globs-match-under-hidden-directories.md](adr/0044-exclude-globs-match-under-hidden-directories.md) • [Back to TESTING.md](TESTING.md)
+[Back to README.md](../README.md) • [Back to 02-language-convention.md](../CODING_RULES/02-language-convention.md) • [Back to 0027-tree-sitter-multi-language-extraction.md](adr/0027-tree-sitter-multi-language-extraction.md) • [Back to 0039-execution-flow-module-ordering.md](adr/0039-execution-flow-module-ordering.md) • [Back to 0044-exclude-globs-match-under-hidden-directories.md](adr/0044-exclude-globs-match-under-hidden-directories.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](adr/0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to TESTING.md](TESTING.md)
 
 Generates `codemap.json` and `codemap.html` for a polyglot codebase - TypeScript/JavaScript, Go, Rust, Java, and Python, any mix in one repo: a structural map (Package/Directory/File/Symbol) plus algorithmically-detected Module domains and static import/call edges. TS/JS extraction is type-checked (TypeScript Compiler API); Go/Rust/Java/Python extraction is syntactic (tree-sitter, no type checker) - see [Known limitations](#known-limitations) and [ADR-0027](adr/0027-tree-sitter-multi-language-extraction.md)/[ADR-0030](adr/0030-tree-sitter-python-support.md) for what that fidelity difference means in practice. See `CONTEXT.md` for terminology and the [README](../README.md) for a one-paragraph overview.
 
@@ -24,13 +24,13 @@ Node `^22.12.0 || ^24.0.0 || >=26.0.0` is required - `package.json`'s `engines`,
 ## CLI
 
 ```
-codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests]
+codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
 ```
 
 `generate` is the only subcommand. Running the CLI with no subcommand, or an unrecognised one, prints the same usage line to stderr and exits `1`:
 
 ```
-Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests]
+Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
 ```
 
 `--help` or `-h`, anywhere in the arguments, prints the usage line plus a short description of each flag to stdout and exits `0`. It wins over a missing subcommand or a bad flag. Any other unrecognised flag is rejected with `Unknown flag <flag>` and exit code 1. So is a value flag given no value (`--root needs a value`) and a stray positional argument.
@@ -42,6 +42,8 @@ Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force]
 | `--config <path>` | `<root>/codemap.config.json`      | Explicit config file path, bypassing the default lookup.                                                                                                                                                                                                   |
 | `--force`         | off                               | Skip the incremental extraction cache and re-extract every file fresh.                                                                                                                                                                                     |
 | `--include-tests` | off                               | Include test files in discovery and Module clustering instead of excluding them by default ([ADR-0011](adr/0011-exclude-test-files-by-default.md)). Also affects `read`. Changes the cache epoch, so toggling it forces a full re-extraction the next run. |
+| `--scip-index <language>=<path>` | `<root>/index.scip` if present | A SCIP index that refines that language's call targets. `python` or `go`. Repeat once per language. Relative to `--root`. Wins over the config's `scipIndexes`. See [SCIP index resolution](#scip-index-resolution-python-go). |
+| `--run-indexers` | off | Run `scip-python` or `scip-go` for each Python or Go Package when no index for that language was supplied. This runs the repo's own tooling. Not accepted by `read`. See [SCIP index resolution](#scip-index-resolution-python-go). |
 
 ### Example
 
@@ -60,14 +62,17 @@ codemap generate --root . --out .codemap
 ```json
 {
   "outDir": ".codemap",
-  "exclude": ["**/generated/**"]
+  "exclude": ["**/generated/**"],
+  "scipIndexes": { "python": "build/index.scip" }
 }
 ```
 
-Both fields are optional.
+Every field is optional.
 
 - `outDir` (default `.codemap`): where output artefacts land, relative to `--root`.
 - `exclude` (default `[]`): extra glob patterns, **layered on top of** the always-applied defaults below, never replacing them.
+- `scipIndexes` (default `{}`): language to SCIP index path, relative to `--root`. A `--scip-index` flag or a `scipIndexes` tool param wins for the same language. See [SCIP index resolution](#scip-index-resolution-python-go).
+- `indexerTimeoutSeconds` (default `600`): how long one `--run-indexers` run may take before it is stopped. A positive whole number.
 
 Built-in default excludes (always active): `**/node_modules/**`, `**/dist/**`, `**/build/**`, `**/coverage/**`, `**/target/**` (Rust/Java build output), `**/vendor/**` (Go), `**/.stryker-tmp/**` (Stryker mutation-testing sandbox), `**/.pnpm-store/**` (pnpm's local package store). Every pattern here, built-in or your own, matches underneath a hidden ancestor directory too (e.g. `.turbo/some-cache/dist/`) - not just at a visible path.
 
@@ -90,7 +95,7 @@ interface MapJson {
   edges: GraphEdge[];    // kind: "static" (only kind produced so far); type: "import" | "call"
   modules: ModuleSummary[]; // { id, name } - one entry per detected Module, including a dedicated "tests" Module when --include-tests is set. Ordered by dependency ("execution flow"): a Module it imports from is listed before it, ties broken alphabetically by name (ADR-0039) - not by id
   languages: string[]; // every language actually detected in this run, e.g. ["go", "typescript"] - sorted, deduplicated
-  warnings: string[]; // one entry per file skipped this run, e.g. "Skipped unparseable file: src/broken.ts" or "Skipped manifest-less file: <path>" - empty when nothing was skipped
+  warnings: string[]; // one entry per file skipped this run, e.g. "Skipped unparseable file: src/broken.ts" or "Skipped manifest-less file: <path>", then one per SCIP index fallback, e.g. "SCIP index is stale, used tree-sitter resolution: app/x.py" - empty when there is nothing to report
 }
 ```
 
@@ -158,7 +163,7 @@ Register it in any MCP client by pointing its command at `codemap-mcp` (or at `d
 ### `generate`
 
 ```ts
-interface GenerateInput { rootDir?: string; configPath?: string; outDir?: string; force?: boolean; includeTests?: boolean; }
+interface GenerateInput { rootDir?: string; configPath?: string; outDir?: string; force?: boolean; includeTests?: boolean; scipIndexes?: { python?: string; go?: string }; runIndexers?: boolean; }
 interface GenerateOutput { jsonPath: string; htmlPath: string; nodeCount: number; edgeCount: number; }
 ```
 
@@ -173,6 +178,7 @@ interface ReadInput {
   symbolKind?: "function" | "method" | "class" | "const" | "type" | "interface" | "enum";
   search?: string;
   includeTests?: boolean;
+  scipIndexes?: { python?: string; go?: string }; // same meaning as on generate
 }
 interface ReadOutput { nodes: Node[]; edges: Edge[]; modules: { id: number; name: string }[]; }
 ```
@@ -191,8 +197,8 @@ description: Generate and query a structural map (Package/Directory/File/Symbol 
 The Skill calls the shared core pipeline directly, via its own companion script - it does not shell out to the CLI or the MCP server:
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests]
-node "${CLAUDE_SKILL_DIR}/main.js" read [--path <p>] [--symbol-kind <k>] [--search <s>] [--root <dir>] [--out <dir>] [--config <path>] [--include-tests]
+node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
+node "${CLAUDE_SKILL_DIR}/main.js" read [--path <p>] [--symbol-kind <k>] [--search <s>] [--root <dir>] [--out <dir>] [--config <path>] [--include-tests] [--scip-index <language>=<path>]
 ```
 
 Unlike the CLI, the Skill's script exposes **both** `generate` and `read` subcommands. Claude Code expands `${CLAUDE_SKILL_DIR}` to the installed skill directory, so the script resolves from any working directory. `--root` still defaults to the working directory, which is the repo being mapped. It prints exactly one JSON object to stdout, matching the corresponding MCP tool's return shape - one contract, three surfaces. `--help` or `-h` is the one exception: it prints plain-text usage and flag descriptions instead, and exits `0`, the same as the CLI.
@@ -297,9 +303,51 @@ Tips:
 
 Re-running `generate` on a repo it already mapped only re-extracts files whose content changed since the last run (content-hash based), while still resolving types and calls across the whole current file set. Module clustering always recomputes globally on every run, since Module boundaries can shift even when no single file changed.
 
-The cache is invalidated wholesale (full fresh extraction) whenever the generator version, the root `tsconfig.json`'s contents, the config's `exclude` patterns, the `--include-tests`/`includeTests` flag, or any dependency manifest or lockfile at the repo root or a Package root changes (`package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `go.mod`, `go.sum`, `Cargo.toml`, `Cargo.lock`, `pom.xml`, `pyproject.toml`). An `npm install` that changes installed versions without touching a lockfile isn't detected; use `--force` then. Use `--force` (CLI/Skill) or `force: true` (MCP `generate`) to bypass the cache unconditionally.
+The cache is invalidated wholesale (full fresh extraction) whenever the generator version, the root `tsconfig.json`'s contents, the config's `exclude` patterns, the `--include-tests`/`includeTests` flag, the content of any SCIP index the run reads, or any dependency manifest or lockfile at the repo root or a Package root changes (`package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `go.mod`, `go.sum`, `Cargo.toml`, `Cargo.lock`, `pom.xml`, `pyproject.toml`). An `npm install` that changes installed versions without touching a lockfile isn't detected; use `--force` then. Use `--force` (CLI/Skill) or `force: true` (MCP `generate`) to bypass the cache unconditionally.
 
 By default, test files (per the shared `isTestFile` convention: for TS/JS, `*.test.*`/`*.spec.*` or anything under a `test/`, `tests/`, or `__tests__/` directory; `_test.go`; `src/test/` or `*Test.java`/`*Tests.java`; `tests/*.rs`; `test_*.py`/`*_test.py`, any `.py` file under a `test/` or `tests/` directory, or `conftest.py` at any level) are excluded from discovery and Module clustering entirely ([ADR-0011](adr/0011-exclude-test-files-by-default.md)). Pass `--include-tests` (CLI/Skill) or `includeTests: true` (MCP) to include them; when included, they're clustered into one dedicated `"tests"` Module rather than grouped by folder ([ADR-0010](adr/0010-test-files-are-their-own-module.md)).
+
+## SCIP index resolution (Python, Go)
+
+Python and Go calls are resolved syntactically by default: an unqualified call, or a method call on an instance, lists every same-named declaration in the repo as a candidate ([ADR-0027](adr/0027-tree-sitter-multi-language-extraction.md), [ADR-0030](adr/0030-tree-sitter-python-support.md)). A [SCIP](https://github.com/scip-code/scip) index produced by `scip-python` or `scip-go` replaces those candidate lists with the one type-checked target ([ADR-0056](adr/0056-scip-index-resolution-for-tree-sitter-languages.md)).
+
+Produce the index yourself. For Python, from the project root with the project's virtualenv active. For Go, from the directory holding `go.mod`, with [`scip-go`](https://github.com/scip-code/scip-go) installed:
+
+```bash
+npx @sourcegraph/scip-python index . --project-name=<name>
+scip-go index
+```
+
+Each writes `index.scip`, which `generate` and `read` pick up from `<root>/index.scip` with no flag. That file counts only for the languages it holds documents of, so a Go index there leaves Python files alone. An index stored elsewhere is named with `--scip-index python=<path>` or `--scip-index go=<path>`, `scipIndexes` in the config file, or the MCP `scipIndexes` param.
+
+Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or `runIndexers: true` on the MCP `generate` tool. It runs for each language with no supplied index, `<root>/index.scip` included when it holds that language. An unreadable `<root>/index.scip` is warned about and does not stop it:
+
+- `scip-python` or `scip-go` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain. Before `scip-go`, `go build ./...` runs in the Package directory, writing no binary, because `scip-go` succeeds silently on code that does not compile.
+- The index goes to `<out>/scip/`, never into the repo, beside a `.hashes.json` of each file's content hash at index time.
+- The next run reuses that index while every file of its language in the Package hashes the same. Any edit re-runs the indexer.
+- Each run stops after `indexerTimeoutSeconds`, 600 by default.
+- `read` never runs indexers. It reads an index an earlier `generate` wrote only if you name it with `--scip-index`.
+
+**This runs the target repo's own tooling.** `scip-python` calls `pip` in the active environment. `scip-go` loads the module graph with the Go toolchain, and `go build` compiles the module, cgo included. Only turn it on for a repo you would build yourself. It is off by default.
+
+What changes with an index:
+
+- A call the index resolves to an in-repo Symbol keeps only that target.
+- A call the index resolves outside the repo (a stdlib or dependency method that shares a local method's name) produces no call edge.
+- A call the index has nothing for keeps its syntactic candidates.
+- A call through a Go interface method, or to a nested Python function, keeps its syntactic candidates. The index names a target that is not a Symbol, so it cannot say which one runs.
+- Imports, Symbols, and Modules are unchanged.
+- Go only: `scip-go` records no occurrence for a standard-library member. A method call on a standard-library value, such as `Encode` on a `*json.Encoder`, keeps its syntactic candidates.
+
+Every file the index cannot vouch for keeps its syntactic candidates and gets a `warnings` entry:
+
+- `SCIP index is stale, used tree-sitter resolution: <file>` - the file changed since indexing. Without stored source text, which neither `scip-python` nor `scip-go` writes, this is detected by checking that every name the index recorded still sits at its recorded position. A call into a stale file also keeps its syntactic candidates.
+- `Not in SCIP index, used tree-sitter resolution: <file>` - the index has no document for the file.
+- `Unreadable SCIP index <path>: <reason>` - a named index is missing or not a SCIP file. A missing `<root>/index.scip` is not a warning.
+- `SCIP indexer <indexer> failed for package <id>, used tree-sitter resolution: <reason>` - a `--run-indexers` run wrote no index. The reason is `<indexer> not found on PATH`, `exited with status <n>: <last stderr line>`, `timed out after <n>s`, or `exited cleanly but wrote no index`.
+- `go build failed for package <id>, its SCIP index may be incomplete: <first error>` - a Go Package did not compile, so `scip-go` may have skipped part of it. The index is still used. The warning repeats while the index is reused, and clears once the Package builds.
+
+Regenerate a supplied index after editing Python or Go files to clear these. With `--run-indexers` the generator regenerates its own, and judges each file by its recorded hash, not by the position check. A changed index forces a full re-extraction on the next run.
 
 ## Known limitations
 

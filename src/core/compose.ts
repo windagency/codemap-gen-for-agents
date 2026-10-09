@@ -12,6 +12,8 @@ import { runReadCommand } from "src/core/read-command";
 import { createDiscovery } from "src/discovery/discovery";
 import { createCompositeParser } from "src/extraction/composite-parser";
 import { createParserFactory } from "src/extraction/parser-factory";
+import { createDefaultScipIndexer } from "src/extraction/scip-indexer";
+import { createScipIndexResolver } from "src/extraction/scip-resolver";
 import { createGraphBuilderFactory } from "src/graph-building/graph-builder-factory";
 import { createHtmlTransformer, createJsonTransformer } from "src/output/transformer";
 
@@ -22,6 +24,7 @@ export type {
 } from "src/core/generate-command";
 export type { CodemapGenerator } from "src/core/generate-map";
 export { GENERATOR_VERSION } from "src/core/generator-version";
+export { SCIP_LANGUAGES } from "src/core/languages";
 export {
 	createConsoleLogger,
 	type LogContext,
@@ -60,6 +63,8 @@ export function createDefaultPipeline(): CodemapGenerator {
 			moduleDetector: createModuleDetector(),
 			jsonTransformer: createJsonTransformer(),
 			htmlTransformer: createHtmlTransformer(),
+			indexResolver: createScipIndexResolver(),
+			scipIndexer: createDefaultScipIndexer(logger),
 		},
 		logger,
 	);

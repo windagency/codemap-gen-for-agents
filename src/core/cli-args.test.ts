@@ -106,6 +106,60 @@ describe("strict flag parsing", () => {
 	});
 });
 
+describe("--scip-index", () => {
+	it("maps a language to an index path, on both generate and read", () => {
+		expect(parseGenerateArgs(["--scip-index", "python=build/index.scip"]).scipIndexes).toStrictEqual({
+			python: "build/index.scip",
+		});
+		expect(parseReadArgs(["--scip-index", "python=index.scip"]).scipIndexes).toStrictEqual({ python: "index.scip" });
+	});
+
+	it("maps Go to an index path alongside Python", () => {
+		expect(
+			parseGenerateArgs(["--scip-index", "python=py.scip", "--scip-index", "go=go.scip"]).scipIndexes,
+		).toStrictEqual({ python: "py.scip", go: "go.scip" });
+	});
+
+	it("keeps an '=' inside the path", () => {
+		expect(parseGenerateArgs(["--scip-index", "python=out/a=b.scip"]).scipIndexes).toStrictEqual({
+			python: "out/a=b.scip",
+		});
+	});
+
+	it("leaves scipIndexes out entirely when the flag is not given", () => {
+		expect(parseGenerateArgs([])).not.toHaveProperty("scipIndexes");
+	});
+
+	it("rejects a language with no SCIP support yet", () => {
+		expect(() => parseGenerateArgs(["--scip-index", "rust=index.scip"])).toThrow(/--scip-index.*python, go/);
+	});
+
+	it("rejects a value with no language", () => {
+		expect(() => parseGenerateArgs(["--scip-index", "index.scip"])).toThrow(/--scip-index/);
+	});
+
+	it("rejects the same language given twice", () => {
+		expect(() => parseGenerateArgs(["--scip-index", "python=a.scip", "--scip-index", "python=b.scip"])).toThrow(
+			/python.*more than once/,
+		);
+	});
+});
+
+describe("--run-indexers", () => {
+	it("opts generate into running indexers, and is absent otherwise", () => {
+		expect(parseGenerateArgs(["--run-indexers"]).runIndexers).toBe(true);
+		expect(parseGenerateArgs([])).not.toHaveProperty("runIndexers");
+	});
+
+	it("is not a read flag, since read never runs indexers", () => {
+		expect(() => parseReadArgs(["--run-indexers"])).toThrow(/Unknown flag --run-indexers/);
+	});
+
+	it("takes no value", () => {
+		expect(() => parseGenerateArgs(["--run-indexers", "yes"])).toThrow(/--run-indexers takes no value/);
+	});
+});
+
 describe("isHelpRequest", () => {
 	it.each([
 		[["--help"]],

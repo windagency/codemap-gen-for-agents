@@ -1,4 +1,4 @@
-import { SYMBOL_KINDS } from "src/core/compose";
+import { SCIP_LANGUAGES, SYMBOL_KINDS } from "src/core/compose";
 import { z } from "zod";
 
 // `SYMBOL_KINDS` is `core/types.ts`'s single source of truth for `SymbolKind`'s member list
@@ -27,13 +27,29 @@ export const generateInputShape = {
 		.describe(
 			"Includes test files (by filename or test-directory convention, per language) in the codemap; excluded by default.",
 		),
+	scipIndexes: z
+		.partialRecord(z.enum(SCIP_LANGUAGES), z.string())
+		.optional()
+		.describe(
+			"Language -> SCIP index path, relative to rootDir; overrides the config file's scipIndexes. Without one, <rootDir>/index.scip is read when present. Refines that language's call targets; files the index misses keep syntactic candidates.",
+		),
+	runIndexers: z
+		.boolean()
+		.optional()
+		.describe(
+			"Runs each language's SCIP indexer (python: scip-python, go: scip-go) for every language with no supplied index, writing under outDir/scip/. This runs the target repo's own tooling, so only enable it for a repo you would build yourself. A missing or failing indexer becomes a warning. Off by default.",
+		),
 };
 
-// `read` always self-heals via a full incremental `generate` run and hardcodes `force: false`
-// (see `core/read-command.ts`'s `ReadCommandInput`/`runReadCommand`), so `force` isn't part of
-// `ReadInput` at all - strip it back out after spreading `generateInputShape` so it never shows
-// up on this tool's public schema.
-const { force: _readToolOmitsForce, ...readOnlyInputShape } = {
+// `read` always self-heals via a full incremental `generate` run and hardcodes `force: false` and
+// `runIndexers: false` (see `core/read-command.ts`'s `ReadCommandInput`/`runReadCommand`), so
+// neither is part of `ReadInput` at all - strip both back out after spreading
+// `generateInputShape` so they never show up on this tool's public schema.
+const {
+	force: _readToolOmitsForce,
+	runIndexers: _readToolOmitsRunIndexers,
+	...readOnlyInputShape
+} = {
 	...generateInputShape,
 	path: z
 		.string()

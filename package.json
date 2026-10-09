@@ -48,7 +48,9 @@
 		"release": "semantic-release"
 	},
 	"dependencies": {
+		"@bufbuild/protobuf": "^2.16.0",
 		"@modelcontextprotocol/sdk": "^1.30.0",
+		"@scip-code/scip": "^0.10.0",
 		"d3": "^7.9.0",
 		"graphology": "0.26.0",
 		"graphology-communities-louvain": "2.0.2",
