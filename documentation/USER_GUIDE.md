@@ -42,8 +42,8 @@ Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force]
 | `--config <path>` | `<root>/codemap.config.json`      | Explicit config file path, bypassing the default lookup.                                                                                                                                                                                                   |
 | `--force`         | off                               | Skip the incremental extraction cache and re-extract every file fresh.                                                                                                                                                                                     |
 | `--include-tests` | off                               | Include test files in discovery and Module clustering instead of excluding them by default ([ADR-0011](adr/0011-exclude-test-files-by-default.md)). Also affects `read`. Changes the cache epoch, so toggling it forces a full re-extraction the next run. |
-| `--scip-index <language>=<path>` | `<root>/index.scip` if present | A SCIP index that refines that language's call targets. `python` or `go`. Repeat once per language. Relative to `--root`. Wins over the config's `scipIndexes`. See [SCIP index resolution](#scip-index-resolution-python-go). |
-| `--run-indexers` | off | Run `scip-python` or `scip-go` for each Python or Go Package when no index for that language was supplied. This runs the repo's own tooling. Not accepted by `read`. See [SCIP index resolution](#scip-index-resolution-python-go). |
+| `--scip-index <language>=<path>` | `<root>/index.scip` if present | A SCIP index that refines that language's call targets. `python`, `go`, or `rust`. Repeat once per language. Relative to `--root`. Wins over the config's `scipIndexes`. See [SCIP index resolution](#scip-index-resolution-python-go-rust). |
+| `--run-indexers` | off | Run `scip-python`, `scip-go`, or `rust-analyzer` for each Python, Go, or Rust Package when no index for that language was supplied. This runs the repo's own tooling. Not accepted by `read`. See [SCIP index resolution](#scip-index-resolution-python-go-rust). |
 
 ### Example
 
@@ -71,7 +71,7 @@ Every field is optional.
 
 - `outDir` (default `.codemap`): where output artefacts land, relative to `--root`.
 - `exclude` (default `[]`): extra glob patterns, **layered on top of** the always-applied defaults below, never replacing them.
-- `scipIndexes` (default `{}`): language to SCIP index path, relative to `--root`. A `--scip-index` flag or a `scipIndexes` tool param wins for the same language. See [SCIP index resolution](#scip-index-resolution-python-go).
+- `scipIndexes` (default `{}`): language to SCIP index path, relative to `--root`. A `--scip-index` flag or a `scipIndexes` tool param wins for the same language. See [SCIP index resolution](#scip-index-resolution-python-go-rust).
 - `indexerTimeoutSeconds` (default `600`): how long one `--run-indexers` run may take before it is stopped. A positive whole number.
 
 Built-in default excludes (always active): `**/node_modules/**`, `**/dist/**`, `**/build/**`, `**/coverage/**`, `**/target/**` (Rust/Java build output), `**/vendor/**` (Go), `**/.stryker-tmp/**` (Stryker mutation-testing sandbox), `**/.pnpm-store/**` (pnpm's local package store). Every pattern here, built-in or your own, matches underneath a hidden ancestor directory too (e.g. `.turbo/some-cache/dist/`) - not just at a visible path.
@@ -307,28 +307,29 @@ The cache is invalidated wholesale (full fresh extraction) whenever the generato
 
 By default, test files (per the shared `isTestFile` convention: for TS/JS, `*.test.*`/`*.spec.*` or anything under a `test/`, `tests/`, or `__tests__/` directory; `_test.go`; `src/test/` or `*Test.java`/`*Tests.java`; `tests/*.rs`; `test_*.py`/`*_test.py`, any `.py` file under a `test/` or `tests/` directory, or `conftest.py` at any level) are excluded from discovery and Module clustering entirely ([ADR-0011](adr/0011-exclude-test-files-by-default.md)). Pass `--include-tests` (CLI/Skill) or `includeTests: true` (MCP) to include them; when included, they're clustered into one dedicated `"tests"` Module rather than grouped by folder ([ADR-0010](adr/0010-test-files-are-their-own-module.md)).
 
-## SCIP index resolution (Python, Go)
+## SCIP index resolution (Python, Go, Rust)
 
-Python and Go calls are resolved syntactically by default: an unqualified call, or a method call on an instance, lists every same-named declaration in the repo as a candidate ([ADR-0027](adr/0027-tree-sitter-multi-language-extraction.md), [ADR-0030](adr/0030-tree-sitter-python-support.md)). A [SCIP](https://github.com/scip-code/scip) index produced by `scip-python` or `scip-go` replaces those candidate lists with the one type-checked target ([ADR-0056](adr/0056-scip-index-resolution-for-tree-sitter-languages.md)).
+Python, Go, and Rust calls are resolved syntactically by default: an unqualified call, or a method call on an instance, lists every same-named declaration in the repo as a candidate ([ADR-0027](adr/0027-tree-sitter-multi-language-extraction.md), [ADR-0030](adr/0030-tree-sitter-python-support.md)). A [SCIP](https://github.com/scip-code/scip) index produced by `scip-python`, `scip-go`, or `rust-analyzer` replaces those candidate lists with the one type-checked target ([ADR-0056](adr/0056-scip-index-resolution-for-tree-sitter-languages.md)).
 
-Produce the index yourself. For Python, from the project root with the project's virtualenv active. For Go, from the directory holding `go.mod`, with [`scip-go`](https://github.com/scip-code/scip-go) installed:
+Produce the index yourself. For Python, from the project root with the project's virtualenv active. For Go, from the directory holding `go.mod`, with [`scip-go`](https://github.com/scip-code/scip-go) installed. For Rust, from the directory holding `Cargo.toml`, with the `rust-analyzer` rustup component installed:
 
 ```bash
 npx @sourcegraph/scip-python index . --project-name=<name>
 scip-go index
+rust-analyzer scip .
 ```
 
-Each writes `index.scip`, which `generate` and `read` pick up from `<root>/index.scip` with no flag. That file counts only for the languages it holds documents of, so a Go index there leaves Python files alone. An index stored elsewhere is named with `--scip-index python=<path>` or `--scip-index go=<path>`, `scipIndexes` in the config file, or the MCP `scipIndexes` param.
+Each writes `index.scip`, which `generate` and `read` pick up from `<root>/index.scip` with no flag. That file counts only for the languages it holds documents of, so a Go index there leaves Python files alone. An index stored elsewhere is named with `--scip-index <language>=<path>`, such as `--scip-index rust=<path>`, `scipIndexes` in the config file, or the MCP `scipIndexes` param.
 
 Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or `runIndexers: true` on the MCP `generate` tool. It runs for each language with no supplied index, `<root>/index.scip` included when it holds that language. An unreadable `<root>/index.scip` is warned about and does not stop it:
 
-- `scip-python` or `scip-go` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain. Before `scip-go`, `go build ./...` runs in the Package directory, writing no binary, because `scip-go` succeeds silently on code that does not compile.
+- `scip-python`, `scip-go`, or `rust-analyzer` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain. Before `scip-go`, `go build ./...` runs in the Package directory, writing no binary, because `scip-go` succeeds silently on code that does not compile. Rust needs `cargo` too. Before `rust-analyzer`, `cargo check --locked --all-targets` runs, for the same reason. `--locked` means it never writes a `Cargo.lock`, so a crate without one gets a `cargo check failed` warning until a `Cargo.lock` exists. Build output from both goes to `<out>/scip/cargo-target/`, never to the repo's `target/`.
 - The index goes to `<out>/scip/`, never into the repo, beside a `.hashes.json` of each file's content hash at index time.
-- The next run reuses that index while every file of its language in the Package hashes the same. Any edit re-runs the indexer.
+- The next run reuses that index while every file of its language in the Package, and the Package's own manifest and lockfile, hash the same. Any edit re-runs the indexer.
 - Each run stops after `indexerTimeoutSeconds`, 600 by default.
 - `read` never runs indexers. It reads an index an earlier `generate` wrote only if you name it with `--scip-index`.
 
-**This runs the target repo's own tooling.** `scip-python` calls `pip` in the active environment. `scip-go` loads the module graph with the Go toolchain, and `go build` compiles the module, cgo included. Only turn it on for a repo you would build yourself. It is off by default.
+**This runs the target repo's own tooling.** `scip-python` calls `pip` in the active environment. `scip-go` loads the module graph with the Go toolchain, and `go build` compiles the module, cgo included. `cargo check` and `rust-analyzer` both run the crate's build scripts and procedural macros. Only turn it on for a repo you would build yourself. It is off by default.
 
 What changes with an index:
 
@@ -337,17 +338,19 @@ What changes with an index:
 - A call the index has nothing for keeps its syntactic candidates.
 - A call through a Go interface method, or to a nested Python function, keeps its syntactic candidates. The index names a target that is not a Symbol, so it cannot say which one runs.
 - Imports, Symbols, and Modules are unchanged.
+- A call through a Rust trait, such as a method on a `dyn Trait` or a generic `T: Trait`, keeps its syntactic candidates for the same reason.
 - Go only: `scip-go` records no occurrence for a standard-library member. A method call on a standard-library value, such as `Encode` on a `*json.Encoder`, keeps its syntactic candidates.
 
 Every file the index cannot vouch for keeps its syntactic candidates and gets a `warnings` entry:
 
-- `SCIP index is stale, used tree-sitter resolution: <file>` - the file changed since indexing. Without stored source text, which neither `scip-python` nor `scip-go` writes, this is detected by checking that every name the index recorded still sits at its recorded position. A call into a stale file also keeps its syntactic candidates.
+- `SCIP index is stale, used tree-sitter resolution: <file>` - the file changed since indexing. Without stored source text, which none of the three indexers writes, this is detected by checking that every name the index recorded still sits at its recorded position. An occurrence on an operator, on whitespace, or on `Self` is skipped: `rust-analyzer` records operator-trait calls and an impl's own type there. A call into a stale file also keeps its syntactic candidates.
 - `Not in SCIP index, used tree-sitter resolution: <file>` - the index has no document for the file.
 - `Unreadable SCIP index <path>: <reason>` - a named index is missing or not a SCIP file. A missing `<root>/index.scip` is not a warning.
-- `SCIP indexer <indexer> failed for package <id>, used tree-sitter resolution: <reason>` - a `--run-indexers` run wrote no index. The reason is `<indexer> not found on PATH`, `exited with status <n>: <last stderr line>`, `timed out after <n>s`, or `exited cleanly but wrote no index`.
+- `SCIP indexer <indexer> failed for package <id>, used tree-sitter resolution: <reason>` - a `--run-indexers` run wrote no index. The reason is `<indexer> not found on PATH`, `exited with status <n>: <last stderr line>`, the first error line instead for `rust-analyzer`, `timed out after <n>s`, or `exited cleanly but wrote no index`.
 - `go build failed for package <id>, its SCIP index may be incomplete: <first error>` - a Go Package did not compile, so `scip-go` may have skipped part of it. The index is still used. The warning repeats while the index is reused, and clears once the Package builds.
+- `cargo check failed for package <id>, its SCIP index may be incomplete: <first error>` - the Rust counterpart, from `cargo check`'s first error line. This includes a missing `Cargo.lock`.
 
-Regenerate a supplied index after editing Python or Go files to clear these. With `--run-indexers` the generator regenerates its own, and judges each file by its recorded hash, not by the position check. A changed index forces a full re-extraction on the next run.
+Regenerate a supplied index after editing Python, Go, or Rust files to clear these. With `--run-indexers` the generator regenerates its own, and judges each file by its recorded hash, not by the position check. A changed index forces a full re-extraction on the next run.
 
 ## Known limitations
 
