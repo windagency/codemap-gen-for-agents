@@ -11,7 +11,8 @@ export interface IndexerCommand {
 	timeoutMs: number;
 }
 
-export type IndexerExit = { ok: true } | { ok: false; reason: string };
+// `stderr` is the whole of it, for a caller whose tool puts its useful line first.
+export type IndexerExit = { ok: true } | { ok: false; reason: string; stderr: string };
 
 export interface IndexerProcess {
 	run(command: IndexerCommand): IndexerExit;
@@ -60,7 +61,7 @@ export function createIndexerProcess(): IndexerProcess {
 				maxBuffer: STDERR_BUFFER_BYTES,
 			});
 			const reason = failureReasonOf(result, indexerCommand);
-			return reason === undefined ? { ok: true } : { ok: false, reason };
+			return reason === undefined ? { ok: true } : { ok: false, reason, stderr: result.stderr ?? "" };
 		},
 	};
 }

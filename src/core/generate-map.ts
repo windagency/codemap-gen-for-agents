@@ -26,7 +26,7 @@ import { formatSkippedFile, type SkippedFile } from "src/core/skipped-file";
 import type { ClusteredGraph, DiscoveredStructure, ExtractedSymbols } from "src/core/types";
 import type { Discovery } from "src/discovery/discovery";
 import type { Parser } from "src/extraction/parser";
-import type { IndexerFailure, IndexerResult, ScipIndexer } from "src/extraction/scip-indexer";
+import type { IndexerResult, ScipIndexer } from "src/extraction/scip-indexer";
 import type { IndexResolver, IndexSource } from "src/extraction/scip-resolver";
 import type { GraphBuilder } from "src/graph-building/graph-builder";
 import type { Transformer } from "src/output/transformer";
@@ -127,12 +127,12 @@ function displayPath(absolutePath: string, roots: string[]): string {
 }
 
 // A file's stored fallback reason, cached or fresh, each index the resolver could not read, and
-// each indexer run that produced no index.
+// each indexer run that produced no index, then each index whose pre-index check failed.
 function collectIndexWarnings(
 	roots: string[],
 	symbols: ExtractedSymbols[],
 	unreadableIndexes: { indexPath: string; reason: string }[],
-	indexerFailures: IndexerFailure[],
+	{ failures, checkFailures }: Pick<IndexerResult, "failures" | "checkFailures">,
 ): IndexWarning[] {
 	return [
 		...symbols.flatMap((extracted): IndexWarning[] =>
@@ -143,11 +143,17 @@ function collectIndexWarnings(
 			file: displayPath(indexPath, roots),
 			detail: reason,
 		})),
-		...indexerFailures.map(({ packageId, indexer, reason }) => ({
+		...failures.map(({ packageId, indexer, reason }) => ({
 			reason: "indexer-failed" as const,
 			file: packageId,
 			detail: reason,
 			indexer,
+		})),
+		...checkFailures.map(({ packageId, check, reason }) => ({
+			reason: "indexer-check-failed" as const,
+			file: packageId,
+			detail: reason,
+			indexer: check,
 		})),
 	];
 }
@@ -468,7 +474,7 @@ export function createCodemapGenerator(
 							timeoutSeconds: indexerTimeoutSeconds,
 						}),
 					)
-				: { sources: [], failures: [] };
+				: { sources: [], failures: [], checkFailures: [] };
 		const indexSources = [...supplied.sources, ...indexerResult.sources];
 
 		const { files, currentEpoch, cacheDiff } = timer.run("discover", () => {
@@ -537,7 +543,7 @@ export function createCodemapGenerator(
 			[rootDir, path.resolve(inputRootDir)],
 			symbolsForGraph,
 			unreadableIndexes,
-			indexerResult.failures,
+			indexerResult,
 		);
 
 		const { json, html } = timer.run("transform", () => ({

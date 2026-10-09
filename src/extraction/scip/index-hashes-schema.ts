@@ -2,8 +2,11 @@ import { z } from "zod";
 
 // documentation/adr/0056 decision 4's sidecar: `<outDir>/scip/<packageId>.hashes.json`, each of a
 // Package's files' content hash when the generator last indexed it, keyed by repo-relative path.
+// `checkFailure` is why the indexer's pre-index check failed, kept so a reused index still warns.
 // Read back from disk, so validated like any other external input.
-const indexHashesSchema = z.object({ files: z.record(z.string(), z.string()) }).strict();
+const indexHashesSchema = z
+	.object({ files: z.record(z.string(), z.string()), checkFailure: z.string().optional() })
+	.strict();
 
 export type IndexHashes = z.infer<typeof indexHashesSchema>;
 
