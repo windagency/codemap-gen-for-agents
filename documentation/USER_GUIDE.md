@@ -322,13 +322,13 @@ Each writes `index.scip`, which `generate` and `read` pick up from `<root>/index
 
 Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or `runIndexers: true` on the MCP `generate` tool. It runs for each language with no supplied index, `<root>/index.scip` included when it holds that language. An unreadable `<root>/index.scip` is warned about and does not stop it:
 
-- `scip-python` or `scip-go` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain.
+- `scip-python` or `scip-go` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain. Before `scip-go`, `go build ./...` runs in the Package directory, writing no binary, because `scip-go` succeeds silently on code that does not compile.
 - The index goes to `<out>/scip/`, never into the repo, beside a `.hashes.json` of each file's content hash at index time.
 - The next run reuses that index while every file of its language in the Package hashes the same. Any edit re-runs the indexer.
 - Each run stops after `indexerTimeoutSeconds`, 600 by default.
 - `read` never runs indexers. It reads an index an earlier `generate` wrote only if you name it with `--scip-index`.
 
-**This runs the target repo's own tooling.** `scip-python` calls `pip` in the active environment. `scip-go` loads the module graph with the Go toolchain. Only turn it on for a repo you would build yourself. It is off by default.
+**This runs the target repo's own tooling.** `scip-python` calls `pip` in the active environment. `scip-go` loads the module graph with the Go toolchain, and `go build` compiles the module, cgo included. Only turn it on for a repo you would build yourself. It is off by default.
 
 What changes with an index:
 
@@ -344,6 +344,7 @@ Every file the index cannot vouch for keeps its syntactic candidates and gets a 
 - `Not in SCIP index, used tree-sitter resolution: <file>` - the index has no document for the file.
 - `Unreadable SCIP index <path>: <reason>` - a named index is missing or not a SCIP file. A missing `<root>/index.scip` is not a warning.
 - `SCIP indexer <indexer> failed for package <id>, used tree-sitter resolution: <reason>` - a `--run-indexers` run wrote no index. The reason is `<indexer> not found on PATH`, `exited with status <n>: <last stderr line>`, `timed out after <n>s`, or `exited cleanly but wrote no index`.
+- `go build failed for package <id>, its SCIP index may be incomplete: <first error>` - a Go Package did not compile, so `scip-go` may have skipped part of it. The index is still used. The warning repeats while the index is reused, and clears once the Package builds.
 
 Regenerate a supplied index after editing Python or Go files to clear these. With `--run-indexers` the generator regenerates its own, and judges each file by its recorded hash, not by the position check. A changed index forces a full re-extraction on the next run.
 
