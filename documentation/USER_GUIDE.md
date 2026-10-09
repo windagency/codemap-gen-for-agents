@@ -320,7 +320,7 @@ scip-go index
 
 Each writes `index.scip`, which `generate` and `read` pick up from `<root>/index.scip` with no flag. That file counts only for the languages it holds documents of, so a Go index there leaves Python files alone. An index stored elsewhere is named with `--scip-index python=<path>` or `--scip-index go=<path>`, `scipIndexes` in the config file, or the MCP `scipIndexes` param.
 
-Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or `runIndexers: true` on the MCP `generate` tool. It runs for each language with no supplied index, `<root>/index.scip` included when it holds that language:
+Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or `runIndexers: true` on the MCP `generate` tool. It runs for each language with no supplied index, `<root>/index.scip` included when it holds that language. An unreadable `<root>/index.scip` is warned about and does not stop it:
 
 - `scip-python` or `scip-go` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain.
 - The index goes to `<out>/scip/`, never into the repo, beside a `.hashes.json` of each file's content hash at index time.
