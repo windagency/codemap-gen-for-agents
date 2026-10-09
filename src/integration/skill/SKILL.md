@@ -16,7 +16,7 @@ Run the companion script bundled next to this file: `node "${CLAUDE_SKILL_DIR}/m
 Runs the pipeline and writes `codemap.json`/`codemap.html` to disk.
 
 ```
-node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>]
+node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
 ```
 
 - `--root` - the repo to analyze; defaults to the current working directory.
@@ -25,6 +25,7 @@ node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--conf
 - `--force` - bypasses the incremental extraction cache.
 - `--include-tests` - includes test files (each language's own convention; for TS/JS, `*.test.*`/`*.spec.*` or anything under `test/`, `tests/`, `__tests__/`) in discovery and Module clustering instead of excluding them by default ([ADR-0011](../../../documentation/adr/0011-exclude-test-files-by-default.md)); they're clustered into one dedicated `tests` Module rather than grouped by folder ([ADR-0010](../../../documentation/adr/0010-test-files-are-their-own-module.md)). Changes the cache epoch, so toggling it forces a full re-extraction the next run.
 - `--scip-index python=<path>` - a `scip-python` index that narrows Python call candidates to their type-checked target ([ADR-0056](../../../documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md)). Without it, `<root>/index.scip` is read when present. Files the index misses or that changed since indexing keep syntactic candidates and appear in `warnings`.
+- `--run-indexers` - runs `scip-python` itself for each Python Package with no supplied index, writing under `<out>/scip/` and reusing that index while no Python file changed. This runs the target repo's own tooling, so only pass it for a repo you would build yourself. A missing or failing `scip-python` becomes a warning, not an error. `read` never runs indexers.
 
 Prints `{ jsonPath, htmlPath, nodeCount, edgeCount }` - never the graph itself.
 

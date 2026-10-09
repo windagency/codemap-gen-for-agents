@@ -46,6 +46,8 @@ export interface GenerateCommandInput {
 	includeTests?: boolean;
 	// Language -> SCIP index path, relative to `rootDir` (documentation/adr/0056).
 	scipIndexes?: ScipIndexPaths;
+	// Runs each language's SCIP indexer, and so the target repo's build tooling (decision 1).
+	runIndexers?: boolean;
 }
 
 // Never `nodes`/`edges` - a large graph must never cross a tool-call response.
@@ -94,6 +96,8 @@ export function runGenerateCommand(
 		force: input.force,
 		includeTests: input.includeTests,
 		scipIndexes: resolveScipIndexes(rootDir, input.scipIndexes, config),
+		runIndexers: input.runIndexers,
+		indexerTimeoutSeconds: config.indexerTimeoutSeconds,
 	});
 
 	// Every adapter (CLI/MCP/Skill) goes through this one function, so logging here reaches all

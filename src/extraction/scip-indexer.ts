@@ -5,7 +5,7 @@ import { extensionOf, languageOfExtension, parsePackageDir, type ScipLanguage } 
 import type { Logger } from "src/core/observability/logger";
 import type { DiscoveredPackage, DiscoveredStructure } from "src/core/types";
 import { type IndexHashes, parseIndexHashes } from "src/extraction/scip/index-hashes-schema";
-import type { IndexerProcess } from "src/extraction/scip/indexer-process";
+import { createIndexerProcess, type IndexerProcess } from "src/extraction/scip/indexer-process";
 import type { IndexSource } from "src/extraction/scip-resolver";
 
 // documentation/adr/0056 decision 1: with `--run-indexers`, one indexer run per Package root of
@@ -149,4 +149,10 @@ export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger
 			return result;
 		},
 	};
+}
+
+// The composition root's entry point: `core/` may not import `scip/` directly, so the real
+// process adapter is attached here.
+export function createDefaultScipIndexer(logger: Logger): ScipIndexer {
+	return createScipIndexer(createIndexerProcess(), logger);
 }

@@ -12,6 +12,7 @@ import { runReadCommand } from "src/core/read-command";
 import { createDiscovery } from "src/discovery/discovery";
 import { createCompositeParser } from "src/extraction/composite-parser";
 import { createParserFactory } from "src/extraction/parser-factory";
+import { createDefaultScipIndexer } from "src/extraction/scip-indexer";
 import { createScipIndexResolver } from "src/extraction/scip-resolver";
 import { createGraphBuilderFactory } from "src/graph-building/graph-builder-factory";
 import { createHtmlTransformer, createJsonTransformer } from "src/output/transformer";
@@ -63,6 +64,7 @@ export function createDefaultPipeline(): CodemapGenerator {
 			jsonTransformer: createJsonTransformer(),
 			htmlTransformer: createHtmlTransformer(),
 			indexResolver: createScipIndexResolver(),
+			scipIndexer: createDefaultScipIndexer(logger),
 		},
 		logger,
 	);

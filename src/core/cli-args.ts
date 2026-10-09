@@ -51,6 +51,7 @@ export function parseGenerateArgs(argv: string[]): GenerateCommandInput {
 		force: flags["--force"] ?? false,
 		includeTests: flags["--include-tests"] ?? false,
 		...(flags["--scip-index"] ? { scipIndexes: flags["--scip-index"] } : {}),
+		...(flags["--run-indexers"] ? { runIndexers: true } : {}),
 	};
 }
 

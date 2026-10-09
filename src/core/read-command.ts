@@ -48,6 +48,8 @@ export function runReadCommand(
 		force: false,
 		includeTests: input.includeTests,
 		scipIndexes: resolveScipIndexes(rootDir, input.scipIndexes, config),
+		// Never runs the target repo's build tooling as a side effect of a read (documentation/adr/0056).
+		runIndexers: false,
 	});
 
 	// Same pipeline, same skip-and-warn policy as `runGenerateCommand` - surfaced the same way

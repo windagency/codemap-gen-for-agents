@@ -57,7 +57,10 @@ const commonFlags = {
 // Flags that may be given more than once; `collectFlags` gathers their values into a list.
 export const REPEATABLE_FLAGS: ReadonlySet<string> = new Set(["--scip-index"]);
 
-const generateFlagsSchema = z.object({ ...commonFlags, "--force": booleanFlag("--force") }).strict();
+// `--run-indexers` is generate-only: read never runs indexers (documentation/adr/0056 decision 1).
+const generateFlagsSchema = z
+	.object({ ...commonFlags, "--force": booleanFlag("--force"), "--run-indexers": booleanFlag("--run-indexers") })
+	.strict();
 
 const readFlagsSchema = z
 	.object({
