@@ -37,7 +37,7 @@ export const generateInputShape = {
 		.boolean()
 		.optional()
 		.describe(
-			"Runs each language's SCIP indexer (python: scip-python) for every language with no supplied index, writing under outDir/scip/. This runs the target repo's own tooling, so only enable it for a repo you would build yourself. A missing or failing indexer becomes a warning. Off by default.",
+			"Runs each language's SCIP indexer (python: scip-python, go: scip-go) for every language with no supplied index, writing under outDir/scip/. This runs the target repo's own tooling, so only enable it for a repo you would build yourself. A missing or failing indexer becomes a warning. Off by default.",
 		),
 };
 

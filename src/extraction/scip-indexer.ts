@@ -41,10 +41,13 @@ interface IndexerSpec {
 	args(outputPath: string): string[];
 }
 
-// Fixed argv, checked against `scip-python index --help` 0.6.6. The working directory is the
-// Package root, which is also what scip-python indexes.
+// Fixed argv, checked against `scip-python index --help` 0.6.6 and `scip-go index --help` 0.2.7.
+// The working directory is the Package root, which is also what each indexer indexes. scip-go
+// writes progress to stdout, which is discarded; its `--quiet` would also silence the stderr a
+// failure reason comes from.
 const INDEXERS: Readonly<Record<ScipLanguage, IndexerSpec>> = {
 	python: { command: "scip-python", args: (outputPath) => ["index", "--output", outputPath, "--quiet"] },
+	go: { command: "scip-go", args: (outputPath) => ["index", "--output", outputPath] },
 };
 
 const SCIP_DIR_NAME = "scip";

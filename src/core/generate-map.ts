@@ -19,6 +19,7 @@ import {
 	languageOfExtension,
 	parsePackageDir,
 	SCIP_LANGUAGES,
+	type ScipLanguage,
 } from "src/core/languages";
 import { createConsoleLogger, currentLogContext, type Logger, withLogContext } from "src/core/observability/logger";
 import { formatSkippedFile, type SkippedFile } from "src/core/skipped-file";
@@ -79,13 +80,20 @@ function computeCurrentEpoch(
 }
 
 // documentation/adr/0056 decision 2: an explicit path per language, else `<rootDir>/index.scip`
-// when that file exists. An explicit path that does not exist is still a source, so the run warns
-// about it instead of silently ignoring it.
-function resolveIndexSources(rootDir: string, scipIndexes: ScipIndexPaths): IndexSource[] {
+// when that file exists and holds documents of that language. An explicit path that does not
+// exist is still a source, so the run warns about it instead of silently ignoring it. So is an
+// unreadable default, for every language, so the run warns about it once.
+function resolveIndexSources(
+	rootDir: string,
+	scipIndexes: ScipIndexPaths,
+	indexResolver: IndexResolver,
+): IndexSource[] {
 	const defaultPath = path.join(rootDir, DEFAULT_SCIP_INDEX_FILE_NAME);
-	const hasDefault = fs.existsSync(defaultPath);
+	const needsDefault = SCIP_LANGUAGES.some((language) => scipIndexes[language] === undefined);
+	const defaultLanguages: readonly ScipLanguage[] =
+		needsDefault && fs.existsSync(defaultPath) ? (indexResolver.languagesIn(defaultPath) ?? SCIP_LANGUAGES) : [];
 	return SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
-		const indexPath = scipIndexes[language] ?? (hasDefault ? defaultPath : undefined);
+		const indexPath = scipIndexes[language] ?? (defaultLanguages.includes(language) ? defaultPath : undefined);
 		return indexPath === undefined ? [] : [{ language, indexPath: path.resolve(indexPath) }];
 	});
 }
@@ -438,7 +446,7 @@ export function createCodemapGenerator(
 			indexerTimeoutSeconds = DEFAULT_INDEXER_TIMEOUT_SECONDS,
 		} = options;
 		const cachePath = path.join(outDir, CACHE_FILE_NAME);
-		const suppliedSources = indexResolver ? resolveIndexSources(rootDir, scipIndexes) : [];
+		const suppliedSources = indexResolver ? resolveIndexSources(rootDir, scipIndexes, indexResolver) : [];
 
 		const structure = timer.run("discover", () => discovery.discover(rootDir, exclude, includeTests));
 		// Decision 1 and 2: only for a language with no supplied index, and never from `read`.
