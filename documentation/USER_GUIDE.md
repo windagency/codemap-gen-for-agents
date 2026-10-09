@@ -325,7 +325,7 @@ Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or
 
 - `scip-python`, `scip-go`, or `rust-analyzer` must be on `PATH`. It runs once per Package of its language, in that Package's directory, with the generator's environment, so activate the virtualenv first. `scip-go` also needs a Go toolchain. Before `scip-go`, `go build ./...` runs in the Package directory, writing no binary, because `scip-go` succeeds silently on code that does not compile. Rust needs `cargo` too. Before `rust-analyzer`, `cargo check --locked --all-targets` runs, for the same reason. `--locked` means it never writes a `Cargo.lock`, so a crate without one gets a `cargo check failed` warning until a `Cargo.lock` exists. Build output from both goes to `<out>/scip/cargo-target/`, never to the repo's `target/`.
 - The index goes to `<out>/scip/`, never into the repo, beside a `.hashes.json` of each file's content hash at index time.
-- The next run reuses that index while every file of its language in the Package, and the Package's own manifest and lockfile, hash the same. Any edit re-runs the indexer.
+- The next run reuses that index while every file of its language in the Package, and the manifests and lockfiles of its language in the Package directory or any directory above it, hash the same. A Cargo workspace's root `Cargo.lock` counts for each member. Any edit re-runs the indexer.
 - Each run stops after `indexerTimeoutSeconds`, 600 by default.
 - `read` never runs indexers. It reads an index an earlier `generate` wrote only if you name it with `--scip-index`.
 
