@@ -57,4 +57,18 @@ describe("isDocumentCurrent", () => {
 		expect(isDocumentCurrent(utf8, source)).toBe(true);
 		expect(isDocumentCurrent(utf16, source)).toBe(true);
 	});
+
+	it("trusts a recorded content hash over the anchor check when the generator ran the indexer", () => {
+		const anchored = documentOf([occurrence(LOAD, 0, 4, 8, true)]);
+		const shifted = `# a new first line\n${SOURCE}`;
+
+		expect(isDocumentCurrent(anchored, shifted, { recorded: "abc", current: "abc" })).toBe(true);
+		expect(isDocumentCurrent(anchored, SOURCE, { recorded: "abc", current: "def" })).toBe(false);
+	});
+
+	it("still compares stored text first when a recorded hash is also present", () => {
+		expect(isDocumentCurrent(documentOf([], SOURCE), `${SOURCE}# edited\n`, { recorded: "abc", current: "abc" })).toBe(
+			false,
+		);
+	});
 });

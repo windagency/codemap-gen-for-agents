@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -115,5 +116,29 @@ describe("createScipIndexResolver", () => {
 		const { symbols } = createScipIndexResolver().resolve([], [tsFile], new Map([[tsFile.filePath, tsFile]]));
 
 		expect(symbols).toStrictEqual([tsFile]);
+	});
+
+	it("judges a file by the content hash recorded when the generator indexed it", () => {
+		const rootDir = copyFixture();
+		const servicePath = path.join(rootDir, "app", "service.py");
+		const storagePath = path.join(rootDir, "app", "storage.py");
+		fs.writeFileSync(servicePath, `# edited\n${fs.readFileSync(servicePath, "utf8")}`);
+		const sha256 = (filePath: string) => crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+		const { fresh, symbolsByFile } = extract(rootDir);
+
+		const { symbols } = createScipIndexResolver().resolve(
+			[
+				{
+					language: "python",
+					indexPath: path.join(rootDir, "index.scip"),
+					fileHashes: { [servicePath]: sha256(servicePath), [storagePath]: "not the current hash" },
+				},
+			],
+			fresh,
+			symbolsByFile,
+		);
+
+		expect(serviceOf(symbols, rootDir)?.indexFallback).toBeUndefined();
+		expect(symbols.find((extracted) => extracted.filePath === storagePath)?.indexFallback).toBe("index-stale");
 	});
 });

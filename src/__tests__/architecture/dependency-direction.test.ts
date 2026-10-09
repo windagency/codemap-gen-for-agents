@@ -175,4 +175,13 @@ describe("pipeline dependency direction", () => {
 
 		expect(violations).toStrictEqual([]);
 	});
+
+	it("node:child_process is only ever imported through the indexer process adapter (documentation/adr/0056)", () => {
+		const violations = findBoundaryViolations(
+			/^src\/(?!extraction\/scip\/indexer-process\.ts$)/,
+			/^(node:)?child_process$/,
+		);
+
+		expect(violations).toStrictEqual([]);
+	});
 });
