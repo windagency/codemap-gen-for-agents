@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,8 @@ import { isDocumentCurrent } from "src/extraction/scip/scip-staleness";
 export interface IndexSource {
 	language: ScipLanguage;
 	indexPath: string; // absolute
+	// Absolute path -> content hash when the generator ran the indexer itself (decision 4's sidecar).
+	fileHashes?: Readonly<Record<string, string>>;
 }
 
 export interface UnreadableIndex {
@@ -88,9 +91,9 @@ function isDocumentFor(document: ScipDocument, language: ScipLanguage): boolean 
 	return languageOfExtension(extensionOf(document.relativePath)) === language;
 }
 
-function readSource(filePath: string): string | undefined {
+function readSource(filePath: string): Buffer | undefined {
 	try {
-		return fs.readFileSync(filePath, "utf8");
+		return fs.readFileSync(filePath);
 	} catch {
 		return undefined;
 	}
@@ -98,36 +101,60 @@ function readSource(filePath: string): string | undefined {
 
 interface LoadedDocuments {
 	documentsByFile: Map<string, ScipDocument>;
+	recordedHashes: Map<string, string>;
 	indexedLanguages: Set<ScipLanguage>;
 	unreadableIndexes: UnreadableIndex[];
 }
 
 function loadDocuments(sources: IndexSource[]): LoadedDocuments {
-	const loaded: LoadedDocuments = { documentsByFile: new Map(), indexedLanguages: new Set(), unreadableIndexes: [] };
+	const loaded: LoadedDocuments = {
+		documentsByFile: new Map(),
+		recordedHashes: new Map(),
+		indexedLanguages: new Set(),
+		unreadableIndexes: [],
+	};
 	for (const source of sources) {
 		const read = readScipIndex(source.indexPath);
 		if (!read.ok) {
 			loaded.unreadableIndexes.push({ indexPath: source.indexPath, reason: read.reason });
 			continue;
 		}
-		loaded.indexedLanguages.add(source.language);
-		const root = documentRootOf(read.index, source.indexPath);
-		for (const document of read.index.documents) {
-			if (isDocumentFor(document, source.language)) {
-				loaded.documentsByFile.set(path.join(root, ...document.relativePath.split("/")), document);
-			}
-		}
+		addDocuments(loaded, source, read.index);
 	}
 	return loaded;
 }
 
+function addDocuments(loaded: LoadedDocuments, source: IndexSource, index: ScipIndex): void {
+	loaded.indexedLanguages.add(source.language);
+	for (const [filePath, contentHash] of Object.entries(source.fileHashes ?? {})) {
+		loaded.recordedHashes.set(filePath, contentHash);
+	}
+	const root = documentRootOf(index, source.indexPath);
+	for (const document of index.documents) {
+		if (isDocumentFor(document, source.language)) {
+			loaded.documentsByFile.set(path.join(root, ...document.relativePath.split("/")), document);
+		}
+	}
+}
+
 // Every indexed file is checked, not just the freshly extracted ones: a call into an unchanged
 // file still needs that file's definitions to be current.
-function findStaleFiles(documentsByFile: ReadonlyMap<string, ScipDocument>): Set<string> {
+function findStaleFiles(
+	documentsByFile: ReadonlyMap<string, ScipDocument>,
+	recordedHashes: ReadonlyMap<string, string>,
+): Set<string> {
 	const staleFiles = new Set<string>();
 	for (const [filePath, document] of documentsByFile) {
 		const source = readSource(filePath);
-		if (source === undefined || !isDocumentCurrent(document, source)) staleFiles.add(filePath);
+		const recorded = recordedHashes.get(filePath);
+		// The same sha256 of the raw bytes that `hashFile` recorded in the sidecar.
+		const hashes =
+			source === undefined || recorded === undefined
+				? undefined
+				: { recorded, current: crypto.createHash("sha256").update(source).digest("hex") };
+		if (source === undefined || !isDocumentCurrent(document, source.toString("utf8"), hashes)) {
+			staleFiles.add(filePath);
+		}
 	}
 	return staleFiles;
 }
@@ -140,10 +167,10 @@ function isIndexedLanguage(filePath: string, indexedLanguages: ReadonlySet<ScipL
 export function createScipIndexResolver(): IndexResolver {
 	return {
 		resolve(sources, fresh, symbolsByFile) {
-			const { documentsByFile, indexedLanguages, unreadableIndexes } = loadDocuments(sources);
+			const { documentsByFile, recordedHashes, indexedLanguages, unreadableIndexes } = loadDocuments(sources);
 			if (indexedLanguages.size === 0) return { symbols: fresh, unreadableIndexes };
 
-			const staleFiles = findStaleFiles(documentsByFile);
+			const staleFiles = findStaleFiles(documentsByFile, recordedHashes);
 			const definitions = buildDefinitionIndex(documentsByFile, staleFiles);
 
 			const symbols = fresh.map((extracted): ExtractedSymbols => {
