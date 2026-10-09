@@ -229,6 +229,20 @@ describe("generateMap with runIndexers", () => {
 		]);
 	});
 
+	it("still runs the indexers when the root index.scip cannot be read, and warns about it once", () => {
+		const rootDir = copyFixture();
+		fs.writeFileSync(path.join(rootDir, "index.scip"), "not a SCIP index");
+		const { runsLog } = fakeIndexerOnPath();
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([fs.realpathSync(rootDir)]);
+		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
+		expect(map.warnings).toStrictEqual([
+			"Unreadable SCIP index index.scip: not a SCIP index: illegal tag: field no 13 wire type 6",
+		]);
+	});
+
 	it("runs scip-python when the root index.scip holds only Go documents", () => {
 		const rootDir = copyPolyglotFixture();
 		const { runsLog } = fakeIndexerOnPath();
