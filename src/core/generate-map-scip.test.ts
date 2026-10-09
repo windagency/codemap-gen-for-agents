@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { createDefaultPipeline } from "src/core/compose";
 import type { GenerateMapOptions } from "src/core/generate-map";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // documentation/adr/0056 end to end: the real pipeline over a copy of `fixtures/python-scip`.
 const FIXTURE_DIR = path.resolve(import.meta.dirname, "..", "..", "fixtures", "python-scip");
@@ -112,5 +112,92 @@ describe("generateMap with a SCIP index", () => {
 		fs.writeFileSync(path.join(rootDir, "index.scip"), Buffer.alloc(0));
 
 		expect(callTargetsOf(generate(rootDir))).toStrictEqual(TREE_SITTER_TARGETS);
+	});
+});
+
+// A stand-in `scip-python` on PATH: records each working directory it ran in, then copies the
+// fixture's committed index to wherever `--output` points.
+function fakeScipPythonOnPath(): { runsLog: string } {
+	const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-fake-indexer-"));
+	const runsLog = path.join(binDir, "runs.log");
+	const script = [
+		`#!${process.execPath}`,
+		'const fs = require("node:fs");',
+		'const output = process.argv[process.argv.indexOf("--output") + 1];',
+		`fs.appendFileSync(${JSON.stringify(runsLog)}, process.cwd() + "\\n");`,
+		`fs.copyFileSync(${JSON.stringify(path.join(FIXTURE_DIR, "index.scip"))}, output);`,
+	].join("\n");
+	fs.writeFileSync(path.join(binDir, "scip-python"), script, { mode: 0o755 });
+	vi.stubEnv("PATH", `${binDir}${path.delimiter}${process.env.PATH ?? ""}`);
+	return { runsLog };
+}
+
+function runsIn(runsLog: string): string[] {
+	return fs.existsSync(runsLog) ? fs.readFileSync(runsLog, "utf8").split("\n").filter(Boolean) : [];
+}
+
+describe("generateMap with runIndexers", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it("runs scip-python in the Package root when no index was supplied, then refines from what it wrote", () => {
+		const rootDir = copyFixture();
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		const { runsLog } = fakeScipPythonOnPath();
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([fs.realpathSync(rootDir)]);
+		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
+		expect(map.warnings).toStrictEqual([]);
+		expect(fs.existsSync(path.join(rootDir, ".codemap", "scip", "%2E.scip"))).toBe(true);
+		expect(fs.existsSync(path.join(rootDir, ".codemap", "scip", "%2E.hashes.json"))).toBe(true);
+	});
+
+	it("reuses its own index on the next run while no Python file changed", () => {
+		const rootDir = copyFixture();
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		const { runsLog } = fakeScipPythonOnPath();
+
+		generate(rootDir, { runIndexers: true });
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toHaveLength(1);
+		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
+	});
+
+	it("never runs an indexer for a language whose index was supplied", () => {
+		const rootDir = copyFixture();
+		const { runsLog } = fakeScipPythonOnPath();
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([]);
+		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
+	});
+
+	it("runs nothing unless asked", () => {
+		const rootDir = copyFixture();
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		const { runsLog } = fakeScipPythonOnPath();
+
+		const map = generate(rootDir);
+
+		expect(runsIn(runsLog)).toStrictEqual([]);
+		expect(callTargetsOf(map)).toStrictEqual(TREE_SITTER_TARGETS);
+	});
+
+	it("warns and keeps tree-sitter's candidates when scip-python is not installed", () => {
+		const rootDir = copyFixture();
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		vi.stubEnv("PATH", fs.mkdtempSync(path.join(os.tmpdir(), "codemap-empty-path-")));
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(callTargetsOf(map)).toStrictEqual(TREE_SITTER_TARGETS);
+		expect(map.warnings).toStrictEqual([
+			"SCIP indexer scip-python failed for package ., used tree-sitter resolution: scip-python not found on PATH",
+		]);
 	});
 });

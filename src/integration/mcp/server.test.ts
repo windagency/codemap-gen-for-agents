@@ -119,6 +119,17 @@ describe("createMcpServer", () => {
 		expect(Object.keys(readTool?.inputSchema.properties ?? {})).not.toContain("force");
 	});
 
+	it("exposes runIndexers on generate's schema but not on read's, since read never runs indexers", async () => {
+		const client = await connectedClient();
+
+		const { tools } = await client.listTools();
+		const generateTool = tools.find((tool) => tool.name === "generate");
+		const readTool = tools.find((tool) => tool.name === "read");
+
+		expect(Object.keys(generateTool?.inputSchema.properties ?? {})).toContain("runIndexers");
+		expect(Object.keys(readTool?.inputSchema.properties ?? {})).not.toContain("runIndexers");
+	});
+
 	it("exposes scipIndexes on both generate's and read's schemas", async () => {
 		const client = await connectedClient();
 

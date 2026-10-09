@@ -75,6 +75,26 @@ describe("runReadCommand", () => {
 		expect(withTests.nodes.some((n) => n.id === "index.test.ts#onlyInTest")).toBe(true);
 	});
 
+	it("never runs indexers from its self-healing generate", () => {
+		const receivedOptions: unknown[] = [];
+		const fakeGenerator = {
+			generateMap(_rootDir: string, options: unknown) {
+				receivedOptions.push(options);
+				return {
+					json: JSON.stringify({ nodes: [], edges: [] }),
+					html: "<html></html>",
+					skippedFiles: [],
+					nodeCount: 0,
+					edgeCount: 0,
+				};
+			},
+		};
+
+		runReadCommand({ rootDir }, fakeGenerator);
+
+		expect(receivedOptions).toStrictEqual([expect.objectContaining({ runIndexers: false })]);
+	});
+
 	it("passes scipIndexes through to its self-healing generate, as absolute paths", () => {
 		const receivedOptions: { scipIndexes?: Record<string, string> }[] = [];
 		const fakeGenerator = {
