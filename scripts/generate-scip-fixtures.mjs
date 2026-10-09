@@ -6,7 +6,7 @@ import { fromBinary, toBinary } from "@bufbuild/protobuf";
 import { IndexSchema } from "@scip-code/scip";
 
 // Regenerates each SCIP-indexed fixture's committed `index.scip` (documentation/adr/0056).
-// Runs the real indexer, then rewrites `metadata.projectRoot` to a machine-neutral URI, so the
+// Runs the real indexer, which must already be installed (`scip-go` on PATH for Go), then rewrites `metadata.projectRoot` to a machine-neutral URI, so the
 // committed file never records the path of whoever regenerated it. The generator resolves
 // document paths against the index file's own directory whenever `projectRoot` does not exist.
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
@@ -24,6 +24,12 @@ const FIXTURES = [
 			"--project-version=0.1.0",
 			"--quiet",
 		],
+	},
+	{
+		// A fixed module version: scip-go otherwise records the current git commit in every symbol.
+		name: "go-scip",
+		command: "scip-go",
+		args: ["index", "--module-version=0.1.0", "--quiet"],
 	},
 ];
 
