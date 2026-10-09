@@ -135,13 +135,31 @@ function filesOf(structure: DiscoveredStructure, pkg: DiscoveredPackage, languag
 	);
 }
 
-// The Package's own manifest and lockfile, such as `Cargo.toml` and `Cargo.lock`. Neither is a
-// source file, but a change to either can change the index or clear a check failure.
+// The Package directory, then each directory above it, up to the repo root.
+function selfAndAncestorDirs(dir: string): string[] {
+	const dirs = [dir];
+	for (let current = dir; current !== "."; ) {
+		current = path.posix.dirname(current);
+		dirs.push(current);
+	}
+	return dirs;
+}
+
+// The manifests and lockfiles of the Package's family, such as `Cargo.toml` and `Cargo.lock`, in
+// its directory and every one above it: a Cargo workspace keeps its one lockfile at the workspace
+// root. None is a source file, but a change to one can change the index or clear a check failure.
+// A manifest above that does not govern the Package only costs an extra run.
 function dependencyFilesOf(rootDir: string, pkg: DiscoveredPackage, language: ScipLanguage): string[] {
-	const dir = parsePackageDir(pkg.id);
-	return DEPENDENCY_FILE_NAMES[familyOfLanguage(language)]
-		.map((name) => (dir === "." ? name : `${dir}/${name}`))
+	const names = DEPENDENCY_FILE_NAMES[familyOfLanguage(language)];
+	return selfAndAncestorDirs(parsePackageDir(pkg.id))
+		.flatMap((dir) => names.map((name) => (dir === "." ? name : `${dir}/${name}`)))
 		.filter((file) => fs.existsSync(path.join(rootDir, file)));
+}
+
+// A tool may name a file by its absolute path, such as cargo's lock-file error. Each warning
+// names it relative to the repo root instead, so codemap.json is the same on every machine.
+function relativeToRoot(text: string, rootDir: string): string {
+	return text.split(`${rootDir}${path.sep}`).join("");
 }
 
 // Every Package of a requested language that owns at least one file of it.
@@ -178,12 +196,12 @@ function indexerCommandOf(spec: IndexerSpec, indexPath: string, place: RunPlace)
 }
 
 export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger): ScipIndexer {
-	function runCheck(spec: IndexerSpec, place: RunPlace, run: LogContext): string | undefined {
+	function runCheck(spec: IndexerSpec, place: RunPlace, rootDir: string, run: LogContext): string | undefined {
 		if (!spec.check) return undefined;
 		const startedAt = performance.now();
 		const exit = indexerProcess.run({ command: spec.check.command, args: spec.check.args, ...place });
 		if (exit.ok) return undefined;
-		const reason = spec.check.reasonOf(exit.stderr) ?? exit.reason;
+		const reason = relativeToRoot(spec.check.reasonOf(exit.stderr) ?? exit.reason, rootDir);
 		const durationMs = Math.round(performance.now() - startedAt);
 		logger.warn("scip indexer check failed", { ...run, check: spec.check.label, reason, durationMs });
 		return reason;
@@ -224,14 +242,18 @@ export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger
 		fs.mkdirSync(path.dirname(indexPath), { recursive: true });
 
 		const place = runPlaceOf(spec, request, pkg, indexPath);
-		const checkFailure = runCheck(spec, place, run);
+		const checkFailure = runCheck(spec, place, request.rootDir, run);
 
 		logger.info("scip indexer started", run);
 		const startedAt = performance.now();
 		const exit = indexerProcess.run(indexerCommandOf(spec, indexPath, place));
 		const durationMs = Math.round(performance.now() - startedAt);
 
-		const reason = exit.ok ? (fs.existsSync(indexPath) ? undefined : "exited cleanly but wrote no index") : exit.reason;
+		const reason = exit.ok
+			? fs.existsSync(indexPath)
+				? undefined
+				: "exited cleanly but wrote no index"
+			: relativeToRoot(exit.reason, request.rootDir);
 		if (reason !== undefined) {
 			logger.warn("scip indexer failed", { ...run, reason, durationMs });
 			return { packageId: pkg.id, indexer: spec.command, reason };
