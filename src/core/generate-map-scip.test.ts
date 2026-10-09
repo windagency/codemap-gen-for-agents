@@ -160,6 +160,18 @@ function fakeIndexerOnPath(command = "scip-python", fixtureDir = FIXTURE_DIR): {
 	return { runsLog };
 }
 
+// A stand-in `go` on PATH for scip-go's pre-index `go build`: writes `stderr` and exits `status`.
+function fakeGoOnPath(stderr = "", status = 0): void {
+	const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-fake-go-"));
+	const script = [
+		`#!${process.execPath}`,
+		`process.stderr.write(${JSON.stringify(stderr)});`,
+		`process.exitCode = ${status};`,
+	].join("\n");
+	fs.writeFileSync(path.join(binDir, "go"), script, { mode: 0o755 });
+	vi.stubEnv("PATH", `${binDir}${path.delimiter}${process.env.PATH ?? ""}`);
+}
+
 function runsIn(runsLog: string): string[] {
 	return fs.existsSync(runsLog) ? fs.readFileSync(runsLog, "utf8").split("\n").filter(Boolean) : [];
 }
@@ -259,11 +271,27 @@ describe("generateMap with runIndexers", () => {
 		const rootDir = copyFixture("go-scip");
 		fs.rmSync(path.join(rootDir, "index.scip"));
 		const { runsLog } = fakeIndexerOnPath("scip-go", path.join(FIXTURES_DIR, "go-scip"));
+		fakeGoOnPath();
 
 		const map = generate(rootDir, { runIndexers: true });
 
 		expect(runsIn(runsLog)).toStrictEqual([fs.realpathSync(rootDir)]);
 		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
 		expect(map.warnings).toStrictEqual([]);
+	});
+
+	it("still refines from scip-go when go build fails, and warns with go build's first error", () => {
+		const rootDir = copyFixture("go-scip");
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		fakeIndexerOnPath("scip-go", path.join(FIXTURES_DIR, "go-scip"));
+		fakeGoOnPath("# example.com/goscip/app\napp/service.go:3:2: undefined: x\napp/service.go:4:2: undefined: y\n", 1);
+		const warning = "go build failed for package ., its SCIP index may be incomplete: app/service.go:3:2: undefined: x";
+
+		const map = generate(rootDir, { runIndexers: true });
+		const reused = generate(rootDir, { runIndexers: true });
+
+		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
+		expect(map.warnings).toStrictEqual([warning]);
+		expect(reused.warnings).toStrictEqual([warning]);
 	});
 });

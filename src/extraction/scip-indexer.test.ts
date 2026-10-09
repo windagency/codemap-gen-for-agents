@@ -21,8 +21,11 @@ function fakeLogger(): { logger: Logger; calls: [string, string, LogContext | un
 	};
 }
 
-// Writes an index wherever `--output` points, unless told how to fail instead.
-function fakeProcess(behaviour: { exit?: IndexerExit; writeIndex?: boolean } = {}): {
+// Writes an index wherever `--output` points, unless told how to fail instead. `exits` overrides
+// the exit of one command, such as the `go` of a pre-index check.
+function fakeProcess(
+	behaviour: { exit?: IndexerExit; writeIndex?: boolean; exits?: Record<string, IndexerExit> } = {},
+): {
 	process: IndexerProcess;
 	commands: IndexerCommand[];
 } {
@@ -32,15 +35,36 @@ function fakeProcess(behaviour: { exit?: IndexerExit; writeIndex?: boolean } = {
 		process: {
 			run(command) {
 				commands.push(command);
-				const exit = behaviour.exit ?? { ok: true };
-				if (exit.ok && behaviour.writeIndex !== false) {
-					fs.writeFileSync(command.args[command.args.indexOf("--output") + 1] ?? "", "fake index");
+				const exit = behaviour.exits?.[command.command] ?? behaviour.exit ?? { ok: true };
+				const output = command.args.indexOf("--output");
+				if (exit.ok && output !== -1 && behaviour.writeIndex !== false) {
+					fs.writeFileSync(command.args[output + 1] ?? "", "fake index");
 				}
 				return exit;
 			},
 		},
 	};
 }
+
+// One Go Package at `services/api@go`, beside the Python ones.
+function withGoPackage(rootDir: string, request: IndexerRequest): IndexerRequest {
+	fs.writeFileSync(path.join(rootDir, "services", "api", "main.go"), "package main\n");
+	return {
+		...request,
+		languages: ["go"],
+		structure: {
+			...request.structure,
+			programFiles: [...request.structure.programFiles, "services/api/main.go"],
+			packages: [...request.structure.packages, { id: "services/api@go", name: "api", language: "go" }],
+			fileOwners: {
+				...request.structure.fileOwners,
+				"services/api/main.go": { packageId: "services/api@go", directoryId: "services/api" },
+			},
+		},
+	};
+}
+
+const GO_BUILD_ERRORS = "# example.com/api\nmain.go:3:9: undefined: x\nmain.go:4:9: undefined: y\n";
 
 function sha256(filePath: string): string {
 	return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
@@ -100,39 +124,71 @@ describe("createScipIndexer", () => {
 				{ language: "python", indexPath: apiIndex, fileHashes: { [handler]: sha256(handler) } },
 			],
 			failures: [],
+			checkFailures: [],
 		});
 	});
 
-	it("runs scip-go in each Go Package's root, keeping its stderr for a failure reason", () => {
+	it("runs go build, then scip-go, in each Go Package's root, keeping scip-go's stderr for a failure reason", () => {
 		const { rootDir, outDir, request } = setUpRepo();
-		fs.writeFileSync(path.join(rootDir, "services", "api", "main.go"), "package main\n");
 		const { process, commands } = fakeProcess();
-		const structure: DiscoveredStructure = {
-			...request.structure,
-			programFiles: [...request.structure.programFiles, "services/api/main.go"],
-			packages: [...request.structure.packages, { id: "services/api@go", name: "api", language: "go" }],
-			fileOwners: {
-				...request.structure.fileOwners,
-				"services/api/main.go": { packageId: "services/api@go", directoryId: "services/api" },
-			},
-		};
 		const goIndex = path.join(outDir, "scip", "services%2Fapi%40go.scip");
 		const main = path.join(rootDir, "services", "api", "main.go");
+		const cwd = path.join(rootDir, "services", "api");
 
-		const result = createScipIndexer(process, fakeLogger().logger).index({ ...request, structure, languages: ["go"] });
+		const result = createScipIndexer(process, fakeLogger().logger).index(withGoPackage(rootDir, request));
 
 		expect(commands).toStrictEqual([
-			{
-				command: "scip-go",
-				args: ["index", "--output", goIndex],
-				cwd: path.join(rootDir, "services", "api"),
-				timeoutMs: 600_000,
-			},
+			{ command: "go", args: ["build", "-o", os.devNull, "./..."], cwd, timeoutMs: 600_000 },
+			{ command: "scip-go", args: ["index", "--output", goIndex], cwd, timeoutMs: 600_000 },
 		]);
 		expect(result).toStrictEqual({
 			sources: [{ language: "go", indexPath: goIndex, fileHashes: { [main]: sha256(main) } }],
 			failures: [],
+			checkFailures: [],
 		});
+	});
+
+	it("keeps the index of a Package go build fails on, reporting its first error, and again once reused", () => {
+		const { rootDir, request } = setUpRepo();
+		const goRequest = withGoPackage(rootDir, request);
+		const failingBuild = fakeProcess({
+			exits: { go: { ok: false, reason: "exited with status 1: main.go:4:9: undefined: y", stderr: GO_BUILD_ERRORS } },
+		});
+		const checkFailure = { packageId: "services/api@go", check: "go build", reason: "main.go:3:9: undefined: x" };
+
+		const first = createScipIndexer(failingBuild.process, fakeLogger().logger).index(goRequest);
+		const reused = createScipIndexer(failingBuild.process, fakeLogger().logger).index(goRequest);
+
+		expect(first.sources).toHaveLength(1);
+		expect(first.checkFailures).toStrictEqual([checkFailure]);
+		expect(reused.sources).toHaveLength(1);
+		expect(reused.checkFailures).toStrictEqual([checkFailure]);
+		expect(failingBuild.commands).toHaveLength(2);
+	});
+
+	it("reports a go build that never ran by its reason, and none when scip-go fails too", () => {
+		const { rootDir, request } = setUpRepo();
+		const goRequest = withGoPackage(rootDir, request);
+		const other = setUpRepo();
+		const otherGoRequest = withGoPackage(other.rootDir, other.request);
+		const missingGo = { ok: false as const, reason: "go not found on PATH", stderr: "" };
+
+		const indexed = createScipIndexer(fakeProcess({ exits: { go: missingGo } }).process, fakeLogger().logger).index(
+			goRequest,
+		);
+		const notIndexed = createScipIndexer(
+			fakeProcess({
+				exit: { ok: false, reason: "exited with status 1: boom", stderr: "boom\n" },
+				exits: { go: missingGo },
+			}).process,
+			fakeLogger().logger,
+		).index(otherGoRequest);
+
+		expect(indexed.checkFailures).toStrictEqual([
+			{ packageId: "services/api@go", check: "go build", reason: "go not found on PATH" },
+		]);
+		expect(notIndexed.checkFailures).toStrictEqual([]);
+		expect(notIndexed.failures).toHaveLength(1);
 	});
 
 	it("runs nothing for a language left out of the request", () => {
@@ -142,7 +198,7 @@ describe("createScipIndexer", () => {
 		const result = createScipIndexer(process, fakeLogger().logger).index({ ...request, languages: [] });
 
 		expect(commands).toStrictEqual([]);
-		expect(result).toStrictEqual({ sources: [], failures: [] });
+		expect(result).toStrictEqual({ sources: [], failures: [], checkFailures: [] });
 	});
 
 	it("reuses an earlier index while its Package's files hash the same, and re-runs after an edit", () => {
@@ -181,7 +237,7 @@ describe("createScipIndexer", () => {
 		fs.writeFileSync(path.join(rootDir, "app", "main.py"), "# edited\n");
 		fs.writeFileSync(path.join(rootDir, "services", "api", "handler.py"), "# edited\n");
 
-		const failing = fakeProcess({ exit: { ok: false, reason: "exited with status 1: boom" } });
+		const failing = fakeProcess({ exit: { ok: false, reason: "exited with status 1: boom", stderr: "boom\n" } });
 		const result = createScipIndexer(failing.process, fakeLogger().logger).index(request);
 
 		expect(result).toStrictEqual({
@@ -190,6 +246,7 @@ describe("createScipIndexer", () => {
 				{ packageId: ".", indexer: "scip-python", reason: "exited with status 1: boom" },
 				{ packageId: "services/api", indexer: "scip-python", reason: "exited with status 1: boom" },
 			],
+			checkFailures: [],
 		});
 		expect(fs.existsSync(path.join(outDir, "scip", "%2E.scip"))).toBe(false);
 	});
@@ -220,7 +277,7 @@ describe("createScipIndexer", () => {
 			...request,
 			structure: { ...request.structure, packages: request.structure.packages.slice(0, 1) },
 		});
-		const failing = fakeProcess({ exit: { ok: false, reason: "timed out after 600s" } });
+		const failing = fakeProcess({ exit: { ok: false, reason: "timed out after 600s", stderr: "" } });
 		fs.rmSync(path.join(request.outDir, "scip", "%2E.scip"));
 		createScipIndexer(failing.process, logger).index({
 			...request,
