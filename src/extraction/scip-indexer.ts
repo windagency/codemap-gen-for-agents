@@ -2,7 +2,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { hashFile } from "src/core/cache/extraction-cache";
-import { extensionOf, languageOfExtension, parsePackageDir, type ScipLanguage } from "src/core/languages";
+import {
+	DEPENDENCY_FILE_NAMES,
+	extensionOf,
+	familyOfLanguage,
+	languageOfExtension,
+	parsePackageDir,
+	type ScipLanguage,
+} from "src/core/languages";
 import type { LogContext, Logger } from "src/core/observability/logger";
 import type { DiscoveredPackage, DiscoveredStructure } from "src/core/types";
 import { type IndexHashes, parseIndexHashes } from "src/extraction/scip/index-hashes-schema";
@@ -128,6 +135,15 @@ function filesOf(structure: DiscoveredStructure, pkg: DiscoveredPackage, languag
 	);
 }
 
+// The Package's own manifest and lockfile, such as `Cargo.toml` and `Cargo.lock`. Neither is a
+// source file, but a change to either can change the index or clear a check failure.
+function dependencyFilesOf(rootDir: string, pkg: DiscoveredPackage, language: ScipLanguage): string[] {
+	const dir = parsePackageDir(pkg.id);
+	return DEPENDENCY_FILE_NAMES[familyOfLanguage(language)]
+		.map((name) => (dir === "." ? name : `${dir}/${name}`))
+		.filter((file) => fs.existsSync(path.join(rootDir, file)));
+}
+
 // Every Package of a requested language that owns at least one file of it.
 function packagesToIndex(
 	request: IndexerRequest,
@@ -183,7 +199,8 @@ export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger
 		const base = outputBaseOf(request.outDir, pkg.id);
 		const indexPath = `${base}.scip`;
 		const hashesPath = `${base}.hashes.json`;
-		const hashes = Object.fromEntries(files.map((file) => [file, hashFile(path.join(request.rootDir, file))]));
+		const inputs = [...files, ...dependencyFilesOf(request.rootDir, pkg, language)];
+		const hashes = Object.fromEntries(inputs.map((file) => [file, hashFile(path.join(request.rootDir, file))]));
 		const source: IndexSource = {
 			language,
 			indexPath,
