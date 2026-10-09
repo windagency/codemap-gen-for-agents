@@ -82,20 +82,25 @@ function computeCurrentEpoch(
 // documentation/adr/0056 decision 2: an explicit path per language, else `<rootDir>/index.scip`
 // when that file exists and holds documents of that language. An explicit path that does not
 // exist is still a source, so the run warns about it instead of silently ignoring it. So is an
-// unreadable default, for every language, so the run warns about it once.
+// unreadable default, for every language, so the run warns about it once. `covered` leaves that
+// unreadable default out: it holds nothing, so it must not stop an indexer from running.
 function resolveIndexSources(
 	rootDir: string,
 	scipIndexes: ScipIndexPaths,
 	indexResolver: IndexResolver,
-): IndexSource[] {
+): { sources: IndexSource[]; covered: ScipLanguage[] } {
 	const defaultPath = path.join(rootDir, DEFAULT_SCIP_INDEX_FILE_NAME);
 	const needsDefault = SCIP_LANGUAGES.some((language) => scipIndexes[language] === undefined);
-	const defaultLanguages: readonly ScipLanguage[] =
-		needsDefault && fs.existsSync(defaultPath) ? (indexResolver.languagesIn(defaultPath) ?? SCIP_LANGUAGES) : [];
-	return SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
+	const readable = needsDefault && fs.existsSync(defaultPath) ? indexResolver.languagesIn(defaultPath) : [];
+	const defaultLanguages: readonly ScipLanguage[] = readable ?? SCIP_LANGUAGES;
+	const sources = SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
 		const indexPath = scipIndexes[language] ?? (defaultLanguages.includes(language) ? defaultPath : undefined);
 		return indexPath === undefined ? [] : [{ language, indexPath: path.resolve(indexPath) }];
 	});
+	const covered = SCIP_LANGUAGES.filter(
+		(language) => scipIndexes[language] !== undefined || (readable ?? []).includes(language),
+	);
+	return { sources, covered };
 }
 
 // Decision 5: an index's content is an epoch input, so a regenerated index re-extracts every file
@@ -446,7 +451,9 @@ export function createCodemapGenerator(
 			indexerTimeoutSeconds = DEFAULT_INDEXER_TIMEOUT_SECONDS,
 		} = options;
 		const cachePath = path.join(outDir, CACHE_FILE_NAME);
-		const suppliedSources = indexResolver ? resolveIndexSources(rootDir, scipIndexes, indexResolver) : [];
+		const supplied = indexResolver
+			? resolveIndexSources(rootDir, scipIndexes, indexResolver)
+			: { sources: [], covered: [] };
 
 		const structure = timer.run("discover", () => discovery.discover(rootDir, exclude, includeTests));
 		// Decision 1 and 2: only for a language with no supplied index, and never from `read`.
@@ -457,14 +464,12 @@ export function createCodemapGenerator(
 							rootDir,
 							outDir,
 							structure,
-							languages: SCIP_LANGUAGES.filter(
-								(language) => !suppliedSources.some((source) => source.language === language),
-							),
+							languages: SCIP_LANGUAGES.filter((language) => !supplied.covered.includes(language)),
 							timeoutSeconds: indexerTimeoutSeconds,
 						}),
 					)
 				: { sources: [], failures: [] };
-		const indexSources = [...suppliedSources, ...indexerResult.sources];
+		const indexSources = [...supplied.sources, ...indexerResult.sources];
 
 		const { files, currentEpoch, cacheDiff } = timer.run("discover", () => {
 			// Discovery's ids are repo-relative (they double as node ids); the cache and Parser need
