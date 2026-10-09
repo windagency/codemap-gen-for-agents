@@ -69,6 +69,7 @@ const GO_BUILD_ERRORS = "# example.com/api\nmain.go:3:9: undefined: x\nmain.go:4
 // One Rust Package at `services/api@rust`, beside the Python ones.
 function withRustPackage(rootDir: string, request: IndexerRequest): IndexerRequest {
 	fs.mkdirSync(path.join(rootDir, "services", "api", "src"), { recursive: true });
+	fs.writeFileSync(path.join(rootDir, "services", "api", "Cargo.toml"), '[package]\nname = "api"\n');
 	fs.writeFileSync(path.join(rootDir, "services", "api", "src", "lib.rs"), "pub fn run() {}\n");
 	return {
 		...request,
@@ -300,6 +301,27 @@ describe("createScipIndexer", () => {
 			rootDir,
 			path.join(rootDir, "services", "api"),
 			rootDir,
+		]);
+	});
+
+	// A new lockfile can clear a check failure, and a manifest edit can change what the index reads.
+	it("re-runs when its Package's manifest or lockfile changes, though neither is a source file", () => {
+		const { rootDir, request } = setUpRepo();
+		const rustRequest = withRustPackage(rootDir, request);
+		const { process, commands } = fakeProcess();
+		const indexer = createScipIndexer(process, fakeLogger().logger);
+
+		indexer.index(rustRequest);
+		indexer.index(rustRequest);
+		fs.writeFileSync(path.join(rootDir, "services", "api", "Cargo.lock"), "version = 4\n");
+		const relocked = indexer.index(rustRequest);
+		indexer.index(rustRequest);
+		fs.appendFileSync(path.join(rootDir, "services", "api", "Cargo.toml"), 'edition = "2021"\n');
+		indexer.index(rustRequest);
+
+		expect(commands.filter((command) => command.command === "rust-analyzer")).toHaveLength(3);
+		expect(Object.keys(relocked.sources[0]?.fileHashes ?? {})).toStrictEqual([
+			path.join(rootDir, "services", "api", "src", "lib.rs"),
 		]);
 	});
 
