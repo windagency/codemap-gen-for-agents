@@ -103,6 +103,38 @@ describe("createScipIndexer", () => {
 		});
 	});
 
+	it("runs scip-go in each Go Package's root, keeping its stderr for a failure reason", () => {
+		const { rootDir, outDir, request } = setUpRepo();
+		fs.writeFileSync(path.join(rootDir, "services", "api", "main.go"), "package main\n");
+		const { process, commands } = fakeProcess();
+		const structure: DiscoveredStructure = {
+			...request.structure,
+			programFiles: [...request.structure.programFiles, "services/api/main.go"],
+			packages: [...request.structure.packages, { id: "services/api@go", name: "api", language: "go" }],
+			fileOwners: {
+				...request.structure.fileOwners,
+				"services/api/main.go": { packageId: "services/api@go", directoryId: "services/api" },
+			},
+		};
+		const goIndex = path.join(outDir, "scip", "services%2Fapi%40go.scip");
+		const main = path.join(rootDir, "services", "api", "main.go");
+
+		const result = createScipIndexer(process, fakeLogger().logger).index({ ...request, structure, languages: ["go"] });
+
+		expect(commands).toStrictEqual([
+			{
+				command: "scip-go",
+				args: ["index", "--output", goIndex],
+				cwd: path.join(rootDir, "services", "api"),
+				timeoutMs: 600_000,
+			},
+		]);
+		expect(result).toStrictEqual({
+			sources: [{ language: "go", indexPath: goIndex, fileHashes: { [main]: sha256(main) } }],
+			failures: [],
+		});
+	});
+
 	it("runs nothing for a language left out of the request", () => {
 		const { request } = setUpRepo();
 		const { process, commands } = fakeProcess();

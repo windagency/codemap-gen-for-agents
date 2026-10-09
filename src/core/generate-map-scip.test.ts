@@ -6,12 +6,22 @@ import type { GenerateMapOptions } from "src/core/generate-map";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // documentation/adr/0056 end to end: the real pipeline over a copy of `fixtures/python-scip`.
-const FIXTURE_DIR = path.resolve(import.meta.dirname, "..", "..", "fixtures", "python-scip");
+const FIXTURES_DIR = path.resolve(import.meta.dirname, "..", "..", "fixtures");
+const FIXTURE_DIR = path.join(FIXTURES_DIR, "python-scip");
 
-function copyFixture(): string {
+function copyFixture(name = "python-scip"): string {
 	const copy = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-scip-map-"));
-	fs.cpSync(FIXTURE_DIR, copy, { recursive: true });
+	fs.cpSync(path.join(FIXTURES_DIR, name), copy, { recursive: true });
 	return copy;
+}
+
+// `fixtures/go-scip` with its Go index at the root, plus `fixtures/python-scip`'s Python sources
+// and no Python index: one repo, two SCIP languages, one root `index.scip` covering only Go.
+function copyPolyglotFixture(): string {
+	const rootDir = copyFixture("go-scip");
+	fs.cpSync(path.join(FIXTURE_DIR, "app"), path.join(rootDir, "app"), { recursive: true });
+	fs.copyFileSync(path.join(FIXTURE_DIR, "pyproject.toml"), path.join(rootDir, "pyproject.toml"));
+	return rootDir;
 }
 
 interface MapJson {
@@ -28,9 +38,9 @@ function generate(rootDir: string, options: Partial<GenerateMapOptions> = {}): M
 	return JSON.parse(json) as MapJson;
 }
 
-function callTargetsOf(map: MapJson): string[] {
+function callTargetsOf(map: MapJson, source = "app/service.py#run"): string[] {
 	return map.edges
-		.filter((edge) => edge.type === "call" && edge.source === "app/service.py#run")
+		.filter((edge) => edge.type === "call" && edge.source === source)
 		.map((edge) => edge.target)
 		.sort();
 }
@@ -89,7 +99,8 @@ describe("generateMap with a SCIP index", () => {
 		fs.renameSync(path.join(rootDir, "index.scip"), elsewhere);
 		fs.writeFileSync(path.join(rootDir, "index.scip"), "not a SCIP index");
 
-		const map = generate(rootDir, { scipIndexes: { python: elsewhere } });
+		// Named for every SCIP language, so the unreadable default is never consulted.
+		const map = generate(rootDir, { scipIndexes: { python: elsewhere, go: elsewhere } });
 
 		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
 		expect(map.warnings).toStrictEqual([]);
@@ -113,11 +124,28 @@ describe("generateMap with a SCIP index", () => {
 
 		expect(callTargetsOf(generate(rootDir))).toStrictEqual(TREE_SITTER_TARGETS);
 	});
+
+	it("reads <rootDir>/index.scip for Go, and only for the languages it holds documents of", () => {
+		const map = generate(copyPolyglotFixture());
+
+		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
+		expect(callTargetsOf(map)).toStrictEqual(TREE_SITTER_TARGETS);
+		expect(map.warnings).toStrictEqual([]);
+	});
 });
 
-// A stand-in `scip-python` on PATH: records each working directory it ran in, then copies the
-// fixture's committed index to wherever `--output` points.
-function fakeScipPythonOnPath(): { runsLog: string } {
+// scip-go records no occurrence for a standard-library member, so `Encode` on a `*json.Encoder`
+// keeps tree-sitter's same-name guess.
+const GO_INDEX_TARGETS = [
+	"app/normalize.go#normalize",
+	"legacy/legacy.go#Encode",
+	"storage/storage.go#Load",
+	"storage/storage.go#Save",
+];
+
+// A stand-in indexer on PATH: records each working directory it ran in, then copies a fixture's
+// committed index to wherever `--output` points.
+function fakeIndexerOnPath(command = "scip-python", fixtureDir = FIXTURE_DIR): { runsLog: string } {
 	const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-fake-indexer-"));
 	const runsLog = path.join(binDir, "runs.log");
 	const script = [
@@ -125,9 +153,9 @@ function fakeScipPythonOnPath(): { runsLog: string } {
 		'const fs = require("node:fs");',
 		'const output = process.argv[process.argv.indexOf("--output") + 1];',
 		`fs.appendFileSync(${JSON.stringify(runsLog)}, process.cwd() + "\\n");`,
-		`fs.copyFileSync(${JSON.stringify(path.join(FIXTURE_DIR, "index.scip"))}, output);`,
+		`fs.copyFileSync(${JSON.stringify(path.join(fixtureDir, "index.scip"))}, output);`,
 	].join("\n");
-	fs.writeFileSync(path.join(binDir, "scip-python"), script, { mode: 0o755 });
+	fs.writeFileSync(path.join(binDir, command), script, { mode: 0o755 });
 	vi.stubEnv("PATH", `${binDir}${path.delimiter}${process.env.PATH ?? ""}`);
 	return { runsLog };
 }
@@ -144,7 +172,7 @@ describe("generateMap with runIndexers", () => {
 	it("runs scip-python in the Package root when no index was supplied, then refines from what it wrote", () => {
 		const rootDir = copyFixture();
 		fs.rmSync(path.join(rootDir, "index.scip"));
-		const { runsLog } = fakeScipPythonOnPath();
+		const { runsLog } = fakeIndexerOnPath();
 
 		const map = generate(rootDir, { runIndexers: true });
 
@@ -158,7 +186,7 @@ describe("generateMap with runIndexers", () => {
 	it("reuses its own index on the next run while no Python file changed", () => {
 		const rootDir = copyFixture();
 		fs.rmSync(path.join(rootDir, "index.scip"));
-		const { runsLog } = fakeScipPythonOnPath();
+		const { runsLog } = fakeIndexerOnPath();
 
 		generate(rootDir, { runIndexers: true });
 		const map = generate(rootDir, { runIndexers: true });
@@ -169,7 +197,7 @@ describe("generateMap with runIndexers", () => {
 
 	it("never runs an indexer for a language whose index was supplied", () => {
 		const rootDir = copyFixture();
-		const { runsLog } = fakeScipPythonOnPath();
+		const { runsLog } = fakeIndexerOnPath();
 
 		const map = generate(rootDir, { runIndexers: true });
 
@@ -180,7 +208,7 @@ describe("generateMap with runIndexers", () => {
 	it("runs nothing unless asked", () => {
 		const rootDir = copyFixture();
 		fs.rmSync(path.join(rootDir, "index.scip"));
-		const { runsLog } = fakeScipPythonOnPath();
+		const { runsLog } = fakeIndexerOnPath();
 
 		const map = generate(rootDir);
 
@@ -199,5 +227,29 @@ describe("generateMap with runIndexers", () => {
 		expect(map.warnings).toStrictEqual([
 			"SCIP indexer scip-python failed for package ., used tree-sitter resolution: scip-python not found on PATH",
 		]);
+	});
+
+	it("runs scip-python when the root index.scip holds only Go documents", () => {
+		const rootDir = copyPolyglotFixture();
+		const { runsLog } = fakeIndexerOnPath();
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([fs.realpathSync(rootDir)]);
+		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
+		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
+		expect(map.warnings).toStrictEqual([]);
+	});
+
+	it("runs scip-go in the Go module root when no index was supplied", () => {
+		const rootDir = copyFixture("go-scip");
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		const { runsLog } = fakeIndexerOnPath("scip-go", path.join(FIXTURES_DIR, "go-scip"));
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([fs.realpathSync(rootDir)]);
+		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
+		expect(map.warnings).toStrictEqual([]);
 	});
 });

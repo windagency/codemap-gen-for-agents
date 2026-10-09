@@ -114,6 +114,12 @@ describe("--scip-index", () => {
 		expect(parseReadArgs(["--scip-index", "python=index.scip"]).scipIndexes).toStrictEqual({ python: "index.scip" });
 	});
 
+	it("maps Go to an index path alongside Python", () => {
+		expect(
+			parseGenerateArgs(["--scip-index", "python=py.scip", "--scip-index", "go=go.scip"]).scipIndexes,
+		).toStrictEqual({ python: "py.scip", go: "go.scip" });
+	});
+
 	it("keeps an '=' inside the path", () => {
 		expect(parseGenerateArgs(["--scip-index", "python=out/a=b.scip"]).scipIndexes).toStrictEqual({
 			python: "out/a=b.scip",
@@ -125,7 +131,7 @@ describe("--scip-index", () => {
 	});
 
 	it("rejects a language with no SCIP support yet", () => {
-		expect(() => parseGenerateArgs(["--scip-index", "go=index.scip"])).toThrow(/--scip-index.*python/);
+		expect(() => parseGenerateArgs(["--scip-index", "rust=index.scip"])).toThrow(/--scip-index.*python, go/);
 	});
 
 	it("rejects a value with no language", () => {
