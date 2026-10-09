@@ -1,6 +1,6 @@
 # 0056: Go/Rust/Java/Python resolution comes from a SCIP index, tree-sitter stays the fallback
 
-[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md) • [Back to TESTING.md](../TESTING.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md) • [Back to SKILL.md](../../src/integration/skill/SKILL.md)
+[Back to documentation/adr/README.md](README.md) • [Back to FLOWS.md](../FLOWS.md) • [Back to LLD.md](../LLD.md) • [Back to TESTING.md](../TESTING.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md) • [Back to SKILL.md](../../src/integration/skill/SKILL.md)
 
 ## Status
 
@@ -135,3 +135,18 @@ Python reads a supplied index: `--scip-index`, `scipIndexes`, or `<rootDir>/inde
 - **Document root.** `scip-python` records an absolute `projectRoot`, which does not exist on another machine. Documents resolve against the recorded root if it exists, else the index's directory or one of its ancestors, whichever has the most documents on disk.
 - **Stored text.** `scip-python` does not store source text, so decision 4's anchor check is the one that runs for its indexes.
 - **License correction.** `@bufbuild/protobuf` is `(Apache-2.0 AND BSD-3-Clause)`, not Apache-2.0, and its npm tarball ships no license file. Both parts were already allowlisted. `scripts/generate-third-party-licenses.mjs` reads a vendored copy: the upstream LICENSE at tag `v2.16.0` plus the BSD header the package carries.
+
+## Update: Python slice, `--run-indexers`
+
+`--run-indexers` and `runIndexers` run `scip-python` for Python. Where the shipped code differs from decision 1 or adds detail:
+
+- **Argv.** `scip-python index --output <path> --quiet`, with the Package root as working directory. The `.` the Context section shows is not in 0.6.6's `index --help`; the working directory already selects the project. `--quiet` keeps stderr small. No `--project-name`: its empty default leaves in-repo references resolving the same, checked by a real run over `fixtures/python-scip`.
+- **Which Packages.** A Python Package that owns at least one Python program file after excludes and test filtering. A nested Package's files are also in its parent's index; the later source wins for a file both cover.
+- **A supplied index includes the default.** A `<rootDir>/index.scip` present on disk skips running for Python, the same as an explicit path.
+- **File names.** `<outDir>/scip/<encodeURIComponent(packageId)>.scip` and `.hashes.json`. The root Package `.` is written `%2E`.
+- **Reuse.** The sidecar covers the Package's own Python program files. Any changed, added, or removed file, or a missing index, re-runs the indexer. The old index and sidecar are deleted first, so a failed run never leaves an index to be read against newer files.
+- **Staleness.** A generated index's documents are judged by decision 4's second test, the recorded hash, before the anchor check.
+- **Warnings.** A fourth kind, `indexer-failed`, one per Package: `SCIP indexer scip-python failed for package <id>, used tree-sitter resolution: <reason>`. When one Python Package fails and another succeeds, the failed Package's files also get `index-uncovered`, since Python has a readable index. That duplication is accepted.
+- **Process adapter location.** `src/extraction/scip/indexer-process.ts`, beside the SCIP reader, not an `adapters/` directory, which this repo does not have. The dependency-direction test allows `node:child_process` only there.
+- **Logging.** `scip indexer started`, then `scip indexer finished` or `scip indexer failed` with `durationMs`, or `scip index reused`. `generate complete`'s `durationsMs` gains an `index` stage when indexers run.
+

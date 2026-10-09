@@ -24,13 +24,13 @@ Node `^22.12.0 || ^24.0.0 || >=26.0.0` is required - `package.json`'s `engines`,
 ## CLI
 
 ```
-codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>]
+codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
 ```
 
 `generate` is the only subcommand. Running the CLI with no subcommand, or an unrecognised one, prints the same usage line to stderr and exits `1`:
 
 ```
-Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>]
+Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
 ```
 
 `--help` or `-h`, anywhere in the arguments, prints the usage line plus a short description of each flag to stdout and exits `0`. It wins over a missing subcommand or a bad flag. Any other unrecognised flag is rejected with `Unknown flag <flag>` and exit code 1. So is a value flag given no value (`--root needs a value`) and a stray positional argument.
@@ -43,6 +43,7 @@ Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force]
 | `--force`         | off                               | Skip the incremental extraction cache and re-extract every file fresh.                                                                                                                                                                                     |
 | `--include-tests` | off                               | Include test files in discovery and Module clustering instead of excluding them by default ([ADR-0011](adr/0011-exclude-test-files-by-default.md)). Also affects `read`. Changes the cache epoch, so toggling it forces a full re-extraction the next run. |
 | `--scip-index <language>=<path>` | `<root>/index.scip` if present | A SCIP index that refines that language's call targets. `python` only for now. Repeat once per language. Relative to `--root`. Wins over the config's `scipIndexes`. See [SCIP index resolution](#scip-index-resolution-python). |
+| `--run-indexers` | off | Run `scip-python` for each Python Package when no Python index was supplied. This runs the repo's own tooling. Not accepted by `read`. See [SCIP index resolution](#scip-index-resolution-python). |
 
 ### Example
 
@@ -71,6 +72,7 @@ Every field is optional.
 - `outDir` (default `.codemap`): where output artefacts land, relative to `--root`.
 - `exclude` (default `[]`): extra glob patterns, **layered on top of** the always-applied defaults below, never replacing them.
 - `scipIndexes` (default `{}`): language to SCIP index path, relative to `--root`. A `--scip-index` flag or a `scipIndexes` tool param wins for the same language. See [SCIP index resolution](#scip-index-resolution-python).
+- `indexerTimeoutSeconds` (default `600`): how long one `--run-indexers` run may take before it is stopped. A positive whole number.
 
 Built-in default excludes (always active): `**/node_modules/**`, `**/dist/**`, `**/build/**`, `**/coverage/**`, `**/target/**` (Rust/Java build output), `**/vendor/**` (Go), `**/.stryker-tmp/**` (Stryker mutation-testing sandbox), `**/.pnpm-store/**` (pnpm's local package store). Every pattern here, built-in or your own, matches underneath a hidden ancestor directory too (e.g. `.turbo/some-cache/dist/`) - not just at a visible path.
 
@@ -161,7 +163,7 @@ Register it in any MCP client by pointing its command at `codemap-mcp` (or at `d
 ### `generate`
 
 ```ts
-interface GenerateInput { rootDir?: string; configPath?: string; outDir?: string; force?: boolean; includeTests?: boolean; scipIndexes?: { python?: string }; }
+interface GenerateInput { rootDir?: string; configPath?: string; outDir?: string; force?: boolean; includeTests?: boolean; scipIndexes?: { python?: string }; runIndexers?: boolean; }
 interface GenerateOutput { jsonPath: string; htmlPath: string; nodeCount: number; edgeCount: number; }
 ```
 
@@ -195,7 +197,7 @@ description: Generate and query a structural map (Package/Directory/File/Symbol 
 The Skill calls the shared core pipeline directly, via its own companion script - it does not shell out to the CLI or the MCP server:
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>]
+node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]
 node "${CLAUDE_SKILL_DIR}/main.js" read [--path <p>] [--symbol-kind <k>] [--search <s>] [--root <dir>] [--out <dir>] [--config <path>] [--include-tests] [--scip-index <language>=<path>]
 ```
 
@@ -315,7 +317,17 @@ Produce the index yourself, from the project root, with the project's virtualenv
 npx @sourcegraph/scip-python index . --project-name=<name>
 ```
 
-That writes `index.scip`, which `generate` and `read` pick up from `<root>/index.scip` with no flag. An index stored elsewhere is named with `--scip-index python=<path>`, `scipIndexes` in the config file, or the MCP `scipIndexes` param. The generator never runs the indexer.
+That writes `index.scip`, which `generate` and `read` pick up from `<root>/index.scip` with no flag. An index stored elsewhere is named with `--scip-index python=<path>`, `scipIndexes` in the config file, or the MCP `scipIndexes` param.
+
+Or let `generate` run the indexer, with `--run-indexers` on the CLI or Skill, or `runIndexers: true` on the MCP `generate` tool. It runs only when no Python index was supplied, `<root>/index.scip` included:
+
+- `scip-python` must be on `PATH`. It runs once per Python Package, in that Package's directory, with the generator's environment, so activate the virtualenv first.
+- The index goes to `<out>/scip/`, never into the repo, beside a `.hashes.json` of each file's content hash at index time.
+- The next run reuses that index while every Python file in the Package hashes the same. Any edit re-runs the indexer.
+- Each run stops after `indexerTimeoutSeconds`, 600 by default.
+- `read` never runs indexers. It reads an index an earlier `generate` wrote only if you name it with `--scip-index`.
+
+**This runs the target repo's own tooling.** `scip-python` calls `pip` in the active environment. Only turn it on for a repo you would build yourself. It is off by default.
 
 What changes with an index:
 
@@ -329,8 +341,9 @@ Every file the index cannot vouch for keeps its syntactic candidates and gets a 
 - `SCIP index is stale, used tree-sitter resolution: <file>` - the file changed since indexing. Without stored source text, which `scip-python` does not write, this is detected by checking that every name the index recorded still sits at its recorded position. A call into a stale file also keeps its syntactic candidates.
 - `Not in SCIP index, used tree-sitter resolution: <file>` - the index has no document for the file.
 - `Unreadable SCIP index <path>: <reason>` - a named index is missing or not a SCIP file. A missing `<root>/index.scip` is not a warning.
+- `SCIP indexer scip-python failed for package <id>, used tree-sitter resolution: <reason>` - a `--run-indexers` run wrote no index. The reason is `scip-python not found on PATH`, `exited with status <n>: <last stderr line>`, `timed out after <n>s`, or `exited cleanly but wrote no index`.
 
-Regenerate the index after editing Python files to clear these. A changed index forces a full re-extraction on the next run.
+Regenerate a supplied index after editing Python files to clear these. With `--run-indexers` the generator regenerates its own, and judges each file by its recorded hash, not by the position check. A changed index forces a full re-extraction on the next run.
 
 ## Known limitations
 
