@@ -1,6 +1,6 @@
 # 0005: Incremental extraction caching
 
-[Back to documentation/adr/README.md](README.md) • [Back to HLD.md](../HLD.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
+[Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to documentation/adr/README.md](README.md) • [Back to HLD.md](../HLD.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
 
 ## Status
 

@@ -1,5 +1,5 @@
 export const CLI_USAGE =
-	"Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests]";
+	"Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]";
 
 export const CLI_HELP = `${CLI_USAGE}
 
@@ -11,4 +11,10 @@ Options:
   --config <path>   Config file path (default: <root>/codemap.config.json)
   --force           Skip the incremental cache and re-extract every file
   --include-tests   Include test files in discovery and Module clustering
+  --scip-index <language>=<path>
+                    SCIP index refining that language's call targets (python only,
+                    repeatable per language; default: <root>/index.scip if present)
+  --run-indexers    Run scip-python for each Python Package with no supplied index,
+                    writing under <out>/scip/. Runs the repo's own tooling: only
+                    use it on a repo you would build yourself
   -h, --help        Show this help and exit`;

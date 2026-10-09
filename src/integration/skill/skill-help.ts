@@ -1,5 +1,5 @@
 export const SKILL_USAGE =
-	"Usage: skillEntry <generate|read> [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--path <p>] [--symbol-kind <k>] [--search <s>]";
+	"Usage: skillEntry <generate|read> [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers] [--path <p>] [--symbol-kind <k>] [--search <s>]";
 
 export const SKILL_HELP = `${SKILL_USAGE}
 
@@ -12,10 +12,16 @@ Options (both commands):
   --out <dir>       Output directory (default: .codemap, or the config's outDir)
   --config <path>   Config file path (default: <root>/codemap.config.json)
   --include-tests   Include test files in discovery and Module clustering
+  --scip-index <language>=<path>
+                    SCIP index refining that language's call targets (python only,
+                    repeatable per language; default: <root>/index.scip if present)
   -h, --help        Show this help and exit
 
 Options (generate only):
   --force           Skip the incremental cache and re-extract every file
+  --run-indexers    Run scip-python for each Python Package with no supplied index,
+                    writing under <out>/scip/. Runs the repo's own tooling: only
+                    use it on a repo you would build yourself
 
 Options (read only):
   --path <p>        Prefix/subtree filter; "." is the whole repo

@@ -1,4 +1,4 @@
-import { parseGenerateFlags, parseReadFlags, type RawFlags } from "src/core/cli-args-schema";
+import { parseGenerateFlags, parseReadFlags, type RawFlags, REPEATABLE_FLAGS } from "src/core/cli-args-schema";
 import type { GenerateCommandInput } from "src/core/generate-command";
 import type { ReadCommandInput } from "src/core/read-command";
 
@@ -11,7 +11,17 @@ function isFlag(arg: string | undefined): boolean {
 }
 
 // Pairs each `--flag` with the argument after it, or `true` when the next argument is another
-// flag or missing. Which flags exist, and which take a value, is the schema's job.
+// flag or missing. A repeatable flag collects its values into a list. Which flags exist, and
+// which take a value, is the schema's job.
+function addFlag(flags: RawFlags, arg: string, value: string | true): void {
+	const previous = flags[arg];
+	if (REPEATABLE_FLAGS.has(arg) && value !== true) {
+		flags[arg] = [...(Array.isArray(previous) ? previous : []), value];
+	} else {
+		flags[arg] = value;
+	}
+}
+
 function collectFlags(argv: string[]): RawFlags {
 	const flags: RawFlags = {};
 	for (let i = 0; i < argv.length; i++) {
@@ -20,12 +30,9 @@ function collectFlags(argv: string[]): RawFlags {
 			throw new Error(`Unexpected argument ${JSON.stringify(arg)}`);
 		}
 		const next = argv[i + 1];
-		if (next !== undefined && !isFlag(next)) {
-			flags[arg] = next;
-			i++;
-		} else {
-			flags[arg] = true;
-		}
+		const value = next !== undefined && !isFlag(next) ? next : true;
+		if (value !== true) i++;
+		addFlag(flags, arg, value);
 	}
 	return flags;
 }
@@ -43,6 +50,8 @@ export function parseGenerateArgs(argv: string[]): GenerateCommandInput {
 		configPath: flags["--config"],
 		force: flags["--force"] ?? false,
 		includeTests: flags["--include-tests"] ?? false,
+		...(flags["--scip-index"] ? { scipIndexes: flags["--scip-index"] } : {}),
+		...(flags["--run-indexers"] ? { runIndexers: true } : {}),
 	};
 }
 
@@ -56,5 +65,6 @@ export function parseReadArgs(argv: string[]): ReadCommandInput {
 		symbolKind: flags["--symbol-kind"],
 		search: flags["--search"],
 		includeTests: flags["--include-tests"] ?? false,
+		...(flags["--scip-index"] ? { scipIndexes: flags["--scip-index"] } : {}),
 	};
 }
