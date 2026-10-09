@@ -325,6 +325,57 @@ describe("createScipIndexer", () => {
 		]);
 	});
 
+	// A Cargo workspace keeps one Cargo.lock, and its shared manifest, at the workspace root.
+	it("re-runs when a manifest or lockfile in a directory above the Package changes", () => {
+		const { rootDir, request } = setUpRepo();
+		const rustRequest = withRustPackage(rootDir, request);
+		const { process, commands } = fakeProcess();
+		const indexer = createScipIndexer(process, fakeLogger().logger);
+
+		indexer.index(rustRequest);
+		fs.writeFileSync(path.join(rootDir, "Cargo.lock"), "version = 4\n");
+		indexer.index(rustRequest);
+		indexer.index(rustRequest);
+		fs.writeFileSync(path.join(rootDir, "Cargo.toml"), '[workspace]\nmembers = ["services/api"]\n');
+		indexer.index(rustRequest);
+
+		expect(commands.filter((command) => command.command === "rust-analyzer")).toHaveLength(3);
+	});
+
+	// Cargo names the lock file by its absolute path; codemap.json must not differ between machines.
+	it("reports check and indexer reasons with paths relative to the repo root", () => {
+		const { rootDir, request } = setUpRepo();
+		const other = setUpRepo();
+		const lockError = (dir: string) =>
+			`error: cannot create the lock file ${path.join(dir, "services", "api", "Cargo.lock")} because --locked was passed to prevent this`;
+		const failingCheck = fakeProcess({
+			exits: { cargo: { ok: false, reason: "exited with status 101", stderr: `${lockError(rootDir)}\n` } },
+		});
+		const failingIndexer = fakeProcess({
+			exits: {
+				"rust-analyzer": {
+					ok: false,
+					reason: `exited with status 1: error: failed to parse ${path.join(other.rootDir, "services", "api", "Cargo.toml")}`,
+					stderr: "",
+				},
+			},
+		});
+
+		const checked = createScipIndexer(failingCheck.process, fakeLogger().logger).index(
+			withRustPackage(rootDir, request),
+		);
+		const failed = createScipIndexer(failingIndexer.process, fakeLogger().logger).index(
+			withRustPackage(other.rootDir, other.request),
+		);
+
+		expect(checked.checkFailures.map((failure) => failure.reason)).toStrictEqual([
+			"error: cannot create the lock file services/api/Cargo.lock because --locked was passed to prevent this",
+		]);
+		expect(failed.failures.map((failure) => failure.reason)).toStrictEqual([
+			"exited with status 1: error: failed to parse services/api/Cargo.toml",
+		]);
+	});
+
 	it("re-runs when its earlier index is gone", () => {
 		const { rootDir, outDir, request } = setUpRepo();
 		const { process, commands } = fakeProcess();
