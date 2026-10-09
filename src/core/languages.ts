@@ -14,8 +14,8 @@ export type ParserLanguage = Exclude<Language, "javascript">;
 export const MANIFEST_FAMILIES = ["npm", "go", "rust", "java", "python"] as const satisfies readonly ManifestFamily[];
 
 // Languages whose calls a SCIP index can refine (documentation/adr/0056). Each one is added in its
-// own slice, with its own fixture index; Rust and Java follow Python and Go.
-export const SCIP_LANGUAGES = ["python", "go"] as const satisfies readonly ParserLanguage[];
+// own slice, with its own fixture index; Java follows Python, Go, and Rust.
+export const SCIP_LANGUAGES = ["python", "go", "rust"] as const satisfies readonly ParserLanguage[];
 export type ScipLanguage = (typeof SCIP_LANGUAGES)[number];
 
 // A File's language comes from its own extension alone. `.js`/`.jsx`/`.mjs`/`.cjs` are

@@ -6,7 +6,12 @@ import { extensionOf, languageOfExtension, parsePackageDir, type ScipLanguage } 
 import type { LogContext, Logger } from "src/core/observability/logger";
 import type { DiscoveredPackage, DiscoveredStructure } from "src/core/types";
 import { type IndexHashes, parseIndexHashes } from "src/extraction/scip/index-hashes-schema";
-import { createIndexerProcess, type IndexerProcess } from "src/extraction/scip/indexer-process";
+import {
+	createIndexerProcess,
+	firstErrorLine,
+	type IndexerCommand,
+	type IndexerProcess,
+} from "src/extraction/scip/indexer-process";
 import type { IndexSource } from "src/extraction/scip-resolver";
 
 // documentation/adr/0056 decision 1: with `--run-indexers`, one indexer run per Package root of
@@ -48,14 +53,26 @@ export interface ScipIndexer {
 interface IndexerSpec {
 	command: string;
 	args(outputPath: string): string[];
+	// Added to the environment of both the check and the indexer.
+	env?(scipDir: string): Record<string, string>;
+	detail?: IndexerCommand["detail"];
 	// Run first, in the same directory, for an indexer that exits 0 on code it could not fully read.
-	check?: { label: string; command: string; args: string[] };
+	check?: { label: string; command: string; args: string[]; reasonOf(stderr: string): string | undefined };
 }
 
-// Fixed argv, checked against `scip-python index --help` 0.6.6 and `scip-go index --help` 0.2.7.
-// The working directory is the Package root, which is also what each indexer indexes. scip-go
-// writes progress to stdout, which is discarded; its `--quiet` would also silence the stderr a
-// failure reason comes from.
+// The first line that names a problem, skipping `go build`'s `# <package>` headers; the last one
+// is often `too many errors` or the `go get` hint under a missing dependency.
+function firstProblemLine(stderr: string): string | undefined {
+	return stderr
+		.split("\n")
+		.map((line) => line.trim())
+		.find((line) => line !== "" && !line.startsWith("#"));
+}
+
+// Fixed argv, checked against `scip-python index --help` 0.6.6, `scip-go index --help` 0.2.7, and
+// `rust-analyzer --help` 1.99.0. The working directory is the Package root, which is also what
+// each indexer indexes. scip-go writes progress to stdout, which is discarded; its `--quiet` would
+// also silence the stderr a failure reason comes from.
 const INDEXERS: Readonly<Record<ScipLanguage, IndexerSpec>> = {
 	python: { command: "scip-python", args: (outputPath) => ["index", "--output", outputPath, "--quiet"] },
 	// scip-go exits 0 with an empty stderr on a syntax error, a type error, or a missing
@@ -63,7 +80,23 @@ const INDEXERS: Readonly<Record<ScipLanguage, IndexerSpec>> = {
 	go: {
 		command: "scip-go",
 		args: (outputPath) => ["index", "--output", outputPath],
-		check: { label: "go build", command: "go", args: ["build", "-o", os.devNull, "./..."] },
+		check: { label: "go build", command: "go", args: ["build", "-o", os.devNull, "./..."], reasonOf: firstProblemLine },
+	},
+	// rust-analyzer exits 0 on a syntax error, a type error, or a missing dependency, and ends a
+	// failure with a backtrace. `cargo check` reports each; `--locked` keeps it from writing a
+	// Cargo.lock into the repo. Both would otherwise write build output to the repo's `target/`.
+	rust: {
+		command: "rust-analyzer",
+		args: (outputPath) => ["scip", ".", "--output", outputPath],
+		// biome-ignore lint/style/useNamingConvention: environment variable name
+		env: (scipDir) => ({ CARGO_TARGET_DIR: path.join(scipDir, "cargo-target") }),
+		detail: "first-error",
+		check: {
+			label: "cargo check",
+			command: "cargo",
+			args: ["check", "--locked", "--all-targets", "--message-format=short", "--quiet"],
+			reasonOf: firstErrorLine,
+		},
 	},
 };
 
@@ -82,15 +115,6 @@ function readHashes(hashesPath: string): IndexHashes | undefined {
 	} catch {
 		return undefined;
 	}
-}
-
-// The first line that names a problem, skipping `go build`'s `# <package>` headers; the last one
-// is often `too many errors` or the `go get` hint under a missing dependency.
-function firstProblemLine(stderr: string): string | undefined {
-	return stderr
-		.split("\n")
-		.map((line) => line.trim())
-		.find((line) => line !== "" && !line.startsWith("#"));
 }
 
 function sameHashes(left: Readonly<Record<string, string>>, right: Readonly<Record<string, string>>): boolean {
@@ -122,13 +146,28 @@ interface IndexedPackage {
 	checkFailure?: IndexerCheckFailure;
 }
 
+// Where and how long a Package's check and indexer run, and what they add to the environment.
+type RunPlace = Pick<IndexerCommand, "cwd" | "timeoutMs" | "env">;
+
+function runPlaceOf(spec: IndexerSpec, request: IndexerRequest, pkg: DiscoveredPackage, indexPath: string): RunPlace {
+	return {
+		cwd: path.join(request.rootDir, parsePackageDir(pkg.id)),
+		timeoutMs: request.timeoutSeconds * 1000,
+		...(spec.env && { env: spec.env(path.dirname(indexPath)) }),
+	};
+}
+
+function indexerCommandOf(spec: IndexerSpec, indexPath: string, place: RunPlace): IndexerCommand {
+	return { command: spec.command, args: spec.args(indexPath), ...place, ...(spec.detail && { detail: spec.detail }) };
+}
+
 export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger): ScipIndexer {
-	function runCheck(spec: IndexerSpec, cwd: string, timeoutMs: number, run: LogContext): string | undefined {
+	function runCheck(spec: IndexerSpec, place: RunPlace, run: LogContext): string | undefined {
 		if (!spec.check) return undefined;
 		const startedAt = performance.now();
-		const exit = indexerProcess.run({ command: spec.check.command, args: spec.check.args, cwd, timeoutMs });
+		const exit = indexerProcess.run({ command: spec.check.command, args: spec.check.args, ...place });
 		if (exit.ok) return undefined;
-		const reason = firstProblemLine(exit.stderr) ?? exit.reason;
+		const reason = spec.check.reasonOf(exit.stderr) ?? exit.reason;
 		const durationMs = Math.round(performance.now() - startedAt);
 		logger.warn("scip indexer check failed", { ...run, check: spec.check.label, reason, durationMs });
 		return reason;
@@ -167,13 +206,12 @@ export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger
 		fs.rmSync(hashesPath, { force: true });
 		fs.mkdirSync(path.dirname(indexPath), { recursive: true });
 
-		const cwd = path.join(request.rootDir, parsePackageDir(pkg.id));
-		const timeoutMs = request.timeoutSeconds * 1000;
-		const checkFailure = runCheck(spec, cwd, timeoutMs, run);
+		const place = runPlaceOf(spec, request, pkg, indexPath);
+		const checkFailure = runCheck(spec, place, run);
 
 		logger.info("scip indexer started", run);
 		const startedAt = performance.now();
-		const exit = indexerProcess.run({ command: spec.command, args: spec.args(indexPath), cwd, timeoutMs });
+		const exit = indexerProcess.run(indexerCommandOf(spec, indexPath, place));
 		const durationMs = Math.round(performance.now() - startedAt);
 
 		const reason = exit.ok ? (fs.existsSync(indexPath) ? undefined : "exited cleanly but wrote no index") : exit.reason;
