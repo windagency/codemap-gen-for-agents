@@ -37,6 +37,39 @@ describe("createIndexerProcess", () => {
 		expect(exit).toStrictEqual({ ok: false, reason: "exited with status 3: boom", stderr: "first\nboom\n" });
 	});
 
+	// rust-analyzer ends a failure with a backtrace, so its useful line is the first error.
+	it("reports the first error line instead of the last when asked to", () => {
+		const stderr = "WARN loading\nError: no projects\nStack backtrace:\n   9: _main\n";
+
+		const exit = createIndexerProcess().run({
+			command: NODE,
+			args: ["-e", `process.stderr.write(${JSON.stringify(stderr)}); process.exit(1)`],
+			cwd: scratchDir(),
+			timeoutMs: 10_000,
+			detail: "first-error",
+		});
+
+		expect(exit).toStrictEqual({ ok: false, reason: "exited with status 1: Error: no projects", stderr });
+	});
+
+	it("adds the given variables to the inherited environment", () => {
+		const cwd = scratchDir();
+
+		createIndexerProcess().run({
+			command: NODE,
+			args: [
+				"-e",
+				"require('fs').writeFileSync('env', [process.env.CODEMAP_TEST_VAR, process.env.PATH ? 'path' : ''].join())",
+			],
+			cwd,
+			timeoutMs: 10_000,
+			// biome-ignore lint/style/useNamingConvention: environment variable name
+			env: { CODEMAP_TEST_VAR: "set" },
+		});
+
+		expect(fs.readFileSync(path.join(cwd, "env"), "utf8")).toBe("set,path");
+	});
+
 	it("reports a command that is not installed", () => {
 		const exit = createIndexerProcess().run({
 			command: "codemap-no-such-indexer",

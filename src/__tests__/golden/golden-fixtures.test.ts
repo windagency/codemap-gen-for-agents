@@ -33,6 +33,7 @@ const SCENARIOS: FixtureScenario[] = [
 	// documentation/adr/0056: the committed `index.scip` narrows this fixture's ambiguous calls.
 	{ name: "python-scip", exclude: [] },
 	{ name: "go-scip", exclude: [] },
+	{ name: "rust-scip", exclude: [] },
 	{ name: "polyglot-repo", exclude: [] },
 ];
 

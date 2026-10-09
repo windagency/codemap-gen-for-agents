@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { createDefaultPipeline } from "src/core/compose";
 import type { GenerateMapOptions } from "src/core/generate-map";
+import { SCIP_LANGUAGES } from "src/core/languages";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // documentation/adr/0056 end to end: the real pipeline over a copy of `fixtures/python-scip`.
@@ -100,7 +101,9 @@ describe("generateMap with a SCIP index", () => {
 		fs.writeFileSync(path.join(rootDir, "index.scip"), "not a SCIP index");
 
 		// Named for every SCIP language, so the unreadable default is never consulted.
-		const map = generate(rootDir, { scipIndexes: { python: elsewhere, go: elsewhere } });
+		const map = generate(rootDir, {
+			scipIndexes: Object.fromEntries(SCIP_LANGUAGES.map((language) => [language, elsewhere])),
+		});
 
 		expect(callTargetsOf(map)).toStrictEqual(["app/storage.py#load", "app/storage.py#save"]);
 		expect(map.warnings).toStrictEqual([]);
@@ -132,7 +135,18 @@ describe("generateMap with a SCIP index", () => {
 		expect(callTargetsOf(map)).toStrictEqual(TREE_SITTER_TARGETS);
 		expect(map.warnings).toStrictEqual([]);
 	});
+
+	it("reads <rootDir>/index.scip for Rust, keeping both impls for a call through a trait", () => {
+		const map = generate(copyFixture("rust-scip"));
+
+		expect(callTargetsOf(map, "src/service.rs#run")).toStrictEqual(RUST_INDEX_TARGETS);
+		expect(callTargetsOf(map, "src/service.rs#flush")).toStrictEqual(["src/storage.rs#save", "src/storage.rs#save#2"]);
+		expect(map.warnings).toStrictEqual([]);
+	});
 });
+
+// `lines.push` is `Vec::push`, outside the repo, so its same-name guess is dropped.
+const RUST_INDEX_TARGETS = ["src/storage.rs#save", "src/text.rs#normalize"];
 
 // scip-go records no occurrence for a standard-library member, so `Encode` on a `*json.Encoder`
 // keeps tree-sitter's same-name guess.
@@ -160,15 +174,15 @@ function fakeIndexerOnPath(command = "scip-python", fixtureDir = FIXTURE_DIR): {
 	return { runsLog };
 }
 
-// A stand-in `go` on PATH for scip-go's pre-index `go build`: writes `stderr` and exits `status`.
-function fakeGoOnPath(stderr = "", status = 0): void {
-	const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-fake-go-"));
+// A stand-in for a pre-index check on PATH, such as `go build`: writes `stderr` and exits `status`.
+function fakeCheckOnPath(command: string, stderr = "", status = 0): void {
+	const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-fake-check-"));
 	const script = [
 		`#!${process.execPath}`,
 		`process.stderr.write(${JSON.stringify(stderr)});`,
 		`process.exitCode = ${status};`,
 	].join("\n");
-	fs.writeFileSync(path.join(binDir, "go"), script, { mode: 0o755 });
+	fs.writeFileSync(path.join(binDir, command), script, { mode: 0o755 });
 	vi.stubEnv("PATH", `${binDir}${path.delimiter}${process.env.PATH ?? ""}`);
 }
 
@@ -271,7 +285,7 @@ describe("generateMap with runIndexers", () => {
 		const rootDir = copyFixture("go-scip");
 		fs.rmSync(path.join(rootDir, "index.scip"));
 		const { runsLog } = fakeIndexerOnPath("scip-go", path.join(FIXTURES_DIR, "go-scip"));
-		fakeGoOnPath();
+		fakeCheckOnPath("go");
 
 		const map = generate(rootDir, { runIndexers: true });
 
@@ -284,7 +298,11 @@ describe("generateMap with runIndexers", () => {
 		const rootDir = copyFixture("go-scip");
 		fs.rmSync(path.join(rootDir, "index.scip"));
 		fakeIndexerOnPath("scip-go", path.join(FIXTURES_DIR, "go-scip"));
-		fakeGoOnPath("# example.com/goscip/app\napp/service.go:3:2: undefined: x\napp/service.go:4:2: undefined: y\n", 1);
+		fakeCheckOnPath(
+			"go",
+			"# example.com/goscip/app\napp/service.go:3:2: undefined: x\napp/service.go:4:2: undefined: y\n",
+			1,
+		);
 		const warning = "go build failed for package ., its SCIP index may be incomplete: app/service.go:3:2: undefined: x";
 
 		const map = generate(rootDir, { runIndexers: true });
@@ -293,5 +311,33 @@ describe("generateMap with runIndexers", () => {
 		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
 		expect(map.warnings).toStrictEqual([warning]);
 		expect(reused.warnings).toStrictEqual([warning]);
+	});
+
+	it("runs rust-analyzer in the crate root when no index was supplied", () => {
+		const rootDir = copyFixture("rust-scip");
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		const { runsLog } = fakeIndexerOnPath("rust-analyzer", path.join(FIXTURES_DIR, "rust-scip"));
+		fakeCheckOnPath("cargo");
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([fs.realpathSync(rootDir)]);
+		expect(callTargetsOf(map, "src/service.rs#run")).toStrictEqual(RUST_INDEX_TARGETS);
+		expect(map.warnings).toStrictEqual([]);
+	});
+
+	it("still refines from rust-analyzer when cargo check fails, and warns with its first error", () => {
+		const rootDir = copyFixture("rust-scip");
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		fakeIndexerOnPath("rust-analyzer", path.join(FIXTURES_DIR, "rust-scip"));
+		const lockError = "error: cannot create the lock file Cargo.lock because --locked was passed to prevent this";
+		fakeCheckOnPath("cargo", `${lockError}\nhelp: remove the --locked flag\n`, 101);
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(callTargetsOf(map, "src/service.rs#run")).toStrictEqual(RUST_INDEX_TARGETS);
+		expect(map.warnings).toStrictEqual([
+			`cargo check failed for package ., its SCIP index may be incomplete: ${lockError}`,
+		]);
 	});
 });
