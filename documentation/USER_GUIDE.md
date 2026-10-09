@@ -335,6 +335,7 @@ What changes with an index:
 - A call the index resolves to an in-repo Symbol keeps only that target.
 - A call the index resolves outside the repo (a stdlib or dependency method that shares a local method's name) produces no call edge.
 - A call the index has nothing for keeps its syntactic candidates.
+- A call through a Go interface method, or to a nested Python function, keeps its syntactic candidates. The index names a target that is not a Symbol, so it cannot say which one runs.
 - Imports, Symbols, and Modules are unchanged.
 - Go only: `scip-go` records no occurrence for a standard-library member. A method call on a standard-library value, such as `Encode` on a `*json.Encoder`, keeps its syntactic candidates.
 
