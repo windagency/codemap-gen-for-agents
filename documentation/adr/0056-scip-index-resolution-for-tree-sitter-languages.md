@@ -150,3 +150,14 @@ Python reads a supplied index: `--scip-index`, `scipIndexes`, or `<rootDir>/inde
 - **Process adapter location.** `src/extraction/scip/indexer-process.ts`, beside the SCIP reader, not an `adapters/` directory, which this repo does not have. The dependency-direction test allows `node:child_process` only there.
 - **Logging.** `scip indexer started`, then `scip indexer finished` or `scip indexer failed` with `durationMs`, or `scip index reused`. `generate complete`'s `durationsMs` gains an `index` stage when indexers run.
 
+## Update: Go slice
+
+Go reads a supplied index and runs `scip-go` with `--run-indexers`, the same way Python does. Where it differs, checked against `scip-go` 0.2.7:
+
+- **Argv.** `scip-go index --output <path>`, with the Package root as working directory. The Context section's `scip-go --output <path>` lacks the `index` subcommand 0.2.7 requires. `--quiet` is left off: it silences stderr too, which is where a failure reason comes from. Progress goes to stdout, which is discarded.
+- **Tolerance.** `scip-go` exits 0 and writes an index for a file that does not parse, a missing `go.mod`, and an unresolvable dependency. Those cases surface as stale or uncovered files, not as `indexer-failed`.
+- **Standard-library members.** `scip-go` records no occurrence for a standard-library function or method, only for the package name. A method call on a standard-library value, such as `Encode` on a `*json.Encoder`, keeps tree-sitter's same-name candidates. Python's out-of-repo drop does not happen for these.
+- **Document language.** `scip-go` sets `Document.language` to `go`, so no extension fallback is needed.
+- **Stored text.** `scip-go` stores none, so the anchor check, or the recorded hash for a generated index, is what runs.
+- **The default index is per language.** With two SCIP languages, `<rootDir>/index.scip` is a source only for the languages it holds documents of. A Go-only root index no longer marks Python files `index-uncovered` or stops `scip-python` from running. An unreadable default is still a source for every language with no explicit path, so it warns. An index path named for several languages is decoded and reported once.
+- **Fixture.** `fixtures/go-scip/index.scip` comes from `scip-go` 0.2.7 with `--module-version=0.1.0`, since the default records the current git commit in every symbol. `.gitattributes` marks `*.scip` binary: the catch-all `text eol=lf` rule had rewritten a CRLF byte pair inside it.
