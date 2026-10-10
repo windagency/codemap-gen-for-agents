@@ -1,6 +1,6 @@
 # 0030: Python added as a fourth tree-sitter language, PEP 621 `pyproject.toml` only
 
-[Back to documentation/adr/README.md](README.md) • [Back to HLD.md](../HLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
+[Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to documentation/adr/README.md](README.md) • [Back to HLD.md](../HLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
 
 ## Status
 

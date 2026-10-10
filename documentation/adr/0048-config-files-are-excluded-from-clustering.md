@@ -1,6 +1,6 @@
 # 0048: Known build-tooling config files are excluded from clustering entirely
 
-[Back to LLD.md](../LLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md)
+[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md)
 
 ## Status
 

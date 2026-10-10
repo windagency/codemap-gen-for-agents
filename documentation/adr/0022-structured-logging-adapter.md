@@ -1,6 +1,6 @@
 # 0022: Structured logging adapter
 
-[Back to documentation/adr/README.md](README.md)
+[Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to documentation/adr/README.md](README.md)
 
 ## Status
 
