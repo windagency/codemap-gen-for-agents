@@ -139,6 +139,21 @@ describe("--scip-index", () => {
 	});
 });
 
+describe("--run-indexers", () => {
+	it("opts generate into running indexers, and is absent otherwise", () => {
+		expect(parseGenerateArgs(["--run-indexers"]).runIndexers).toBe(true);
+		expect(parseGenerateArgs([])).not.toHaveProperty("runIndexers");
+	});
+
+	it("is not a read flag, since read never runs indexers", () => {
+		expect(() => parseReadArgs(["--run-indexers"])).toThrow(/Unknown flag --run-indexers/);
+	});
+
+	it("takes no value", () => {
+		expect(() => parseGenerateArgs(["--run-indexers", "yes"])).toThrow(/--run-indexers takes no value/);
+	});
+});
+
 describe("isHelpRequest", () => {
 	it.each([
 		[["--help"]],

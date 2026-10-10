@@ -98,6 +98,27 @@ describe("runGenerateCommand", () => {
 		expect(receivedOptions).toStrictEqual([expect.objectContaining({ force: true })]);
 	});
 
+	it("passes runIndexers through, with the config file's indexer timeout", () => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ indexerTimeoutSeconds: 30 }));
+		const receivedOptions: unknown[] = [];
+		const fakeGenerator = {
+			generateMap(_rootDir: string, options: unknown) {
+				receivedOptions.push(options);
+				return {
+					json: JSON.stringify({ nodes: [], edges: [] }),
+					html: "<html></html>",
+					skippedFiles: [],
+					nodeCount: 0,
+					edgeCount: 0,
+				};
+			},
+		};
+
+		runGenerateCommand({ rootDir, runIndexers: true }, fakeGenerator);
+
+		expect(receivedOptions).toStrictEqual([expect.objectContaining({ runIndexers: true, indexerTimeoutSeconds: 30 })]);
+	});
+
 	it("passes includeTests through to the orchestrator", () => {
 		const receivedOptions: { includeTests?: boolean }[] = [];
 		const fakeGenerator = {

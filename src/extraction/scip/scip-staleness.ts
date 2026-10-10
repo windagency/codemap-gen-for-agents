@@ -2,9 +2,10 @@ import type { PositionEncoding, ScipDocument, ScipOccurrence } from "src/extract
 import { type DescriptorSuffix, lastDescriptor, parseScipSymbol } from "src/extraction/scip/scip-symbol";
 
 // documentation/adr/0056 decision 4: whether a document still describes the file on disk, judged by
-// content, never by modification time. Stored text is compared exactly. Without it, every
-// occurrence naming a declaration must still sit on that declaration's name (the anchor check).
-// The sidecar-hash check for indexes this generator runs itself comes with `--run-indexers`.
+// content, never by modification time. Stored text is compared exactly. Without it, an index the
+// generator ran itself compares the file's content hash with the one recorded at index time.
+// Without either, every occurrence naming a declaration must still sit on that declaration's name
+// (the anchor check).
 
 // Suffixes whose occurrence range covers exactly the descriptor's own name. A namespace or meta
 // occurrence covers a module path instead (`app.storage` for `app.storage/__init__:`).
@@ -44,8 +45,14 @@ function isOccurrenceCurrent(occurrence: ScipOccurrence, lines: string[], encodi
 	return sliceCharacters(line, occurrence.startCharacter, occurrence.endCharacter, encoding) === descriptor.name;
 }
 
-export function isDocumentCurrent(document: ScipDocument, sourceText: string): boolean {
+export interface ContentHashes {
+	recorded: string; // when the generator indexed the file
+	current: string;
+}
+
+export function isDocumentCurrent(document: ScipDocument, sourceText: string, hashes?: ContentHashes): boolean {
 	if (document.text !== undefined) return document.text === sourceText;
+	if (hashes !== undefined) return hashes.recorded === hashes.current;
 
 	const lines = sourceText.split("\n").map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line));
 	return document.occurrences.every((occurrence) => isOccurrenceCurrent(occurrence, lines, document.positionEncoding));

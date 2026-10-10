@@ -1,5 +1,5 @@
 export const SKILL_USAGE =
-	"Usage: skillEntry <generate|read> [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--path <p>] [--symbol-kind <k>] [--search <s>]";
+	"Usage: skillEntry <generate|read> [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers] [--path <p>] [--symbol-kind <k>] [--search <s>]";
 
 export const SKILL_HELP = `${SKILL_USAGE}
 
@@ -19,6 +19,9 @@ Options (both commands):
 
 Options (generate only):
   --force           Skip the incremental cache and re-extract every file
+  --run-indexers    Run scip-python for each Python Package with no supplied index,
+                    writing under <out>/scip/. Runs the repo's own tooling: only
+                    use it on a repo you would build yourself
 
 Options (read only):
   --path <p>        Prefix/subtree filter; "." is the whole repo

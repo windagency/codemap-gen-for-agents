@@ -9,6 +9,8 @@ const codemapConfigSchema = z
 		exclude: z.array(z.string()).optional(),
 		// Language -> SCIP index path, relative to the repo root (documentation/adr/0056).
 		scipIndexes: z.partialRecord(z.enum(SCIP_LANGUAGES), z.string()).optional(),
+		// How long one `--run-indexers` indexer run may take before it is stopped.
+		indexerTimeoutSeconds: z.number().int().positive().optional(),
 	})
 	.strict();
 

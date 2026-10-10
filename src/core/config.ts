@@ -9,9 +9,13 @@ export interface ResolvedCodemapConfig {
 	outDir: string;
 	exclude: string[];
 	scipIndexes: ScipIndexPaths;
+	indexerTimeoutSeconds: number;
 }
 
 export const DEFAULT_OUT_DIR = ".codemap";
+
+// documentation/adr/0056 decision 1's starting value, not a measured one.
+export const DEFAULT_INDEXER_TIMEOUT_SECONDS = 600;
 
 // Always applied, with the config file's own `exclude` layered on top (never replacing it).
 const DEFAULT_EXCLUDE: readonly string[] = [
@@ -46,6 +50,7 @@ export function loadConfig(rootDir: string, explicitConfigPath?: string): Resolv
 		outDir: fileConfig.outDir ?? DEFAULT_OUT_DIR,
 		exclude: [...DEFAULT_EXCLUDE, ...(fileConfig.exclude ?? [])],
 		scipIndexes: fileConfig.scipIndexes ?? {},
+		indexerTimeoutSeconds: fileConfig.indexerTimeoutSeconds ?? DEFAULT_INDEXER_TIMEOUT_SECONDS,
 	};
 }
 

@@ -30,7 +30,7 @@ Manually exercise the paths the automated suite can't reach: a real browser rend
    - **Force-directed view** - confirm detected Modules are visually grouped into regions.
    - **Filter sidebar** - Path, Symbol kind, Search, and Language (HTML-only - the MCP/Skill `read` tool doesn't expose Language) all narrow the view, AND-combined.
 4. Check the CLI's own error behaviours:
-   - Bare `codemap` (no args), or an unrecognised subcommand → `Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>]` on stderr, exit `1`.
+   - Bare `codemap` (no args), or an unrecognised subcommand → `Usage: codemap generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>] [--run-indexers]` on stderr, exit `1`.
    - `--help` or `-h`, with or without `generate` → usage plus flag descriptions on stdout, exit `0`.
    - Any other unrecognised flag → `Unknown flag <flag>`, exit `1`.
    - A value flag given no value → `<flag> needs a value`, exit `1`.

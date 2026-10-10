@@ -92,6 +92,20 @@ describe("loadConfig", () => {
 		expect(() => loadConfig(rootDir)).toThrow(/scipIndexes/);
 	});
 
+	it("reads indexerTimeoutSeconds from the config file, defaulting to 600", () => {
+		expect(loadConfig(rootDir).indexerTimeoutSeconds).toBe(600);
+
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ indexerTimeoutSeconds: 30 }));
+
+		expect(loadConfig(rootDir).indexerTimeoutSeconds).toBe(30);
+	});
+
+	it.each([0, -5, 1.5])("rejects indexerTimeoutSeconds %s", (value) => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ indexerTimeoutSeconds: value }));
+
+		expect(() => loadConfig(rootDir)).toThrow(/indexerTimeoutSeconds/);
+	});
+
 	it("throws a clear error when the config file's shape fails validation", () => {
 		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ outDir: 123 }));
 
