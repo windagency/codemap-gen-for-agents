@@ -1,5 +1,10 @@
 import type { PositionEncoding, ScipDocument, ScipOccurrence } from "src/extraction/scip/scip-index";
-import { type DescriptorSuffix, lastDescriptor, parseScipSymbol } from "src/extraction/scip/scip-symbol";
+import {
+	type DescriptorSuffix,
+	lastDescriptor,
+	parseScipSymbol,
+	type ScipDescriptor,
+} from "src/extraction/scip/scip-symbol";
 
 // documentation/adr/0056 decision 4: whether a document still describes the file on disk, judged by
 // content, never by modification time. Stored text is compared exactly. Without it, an index the
@@ -38,6 +43,13 @@ function isAnchored(text: string, name: string): boolean {
 	return text === name || text === "Self" || OPERATOR_OR_SPACE.test(text);
 }
 
+// The name an occurrence's text must read as. scip-java anchors a constructor, `<init>`, on its
+// class's name, the descriptor before it.
+function anchorNameOf(descriptors: readonly ScipDescriptor[]): string | undefined {
+	const last = descriptors.at(-1);
+	return last?.name === "<init>" ? (descriptors.at(-2)?.name ?? last.name) : last?.name;
+}
+
 // Whether one occurrence still matches the file. A local symbol, a module-path occurrence, a
 // zero-width one, and one spanning lines carry no checkable name, so only their line must exist.
 function isOccurrenceCurrent(occurrence: ScipOccurrence, lines: string[], encoding: PositionEncoding): boolean {
@@ -51,9 +63,10 @@ function isOccurrenceCurrent(occurrence: ScipOccurrence, lines: string[], encodi
 	if (!descriptor || !ANCHORED_SUFFIXES.has(descriptor.suffix) || isZeroWidth || !isSingleLine) return true;
 
 	const line = lines[occurrence.startLine] ?? "";
+	const name = parsed?.kind === "global" ? anchorNameOf(parsed.descriptors) : undefined;
 	return isAnchored(
 		sliceCharacters(line, occurrence.startCharacter, occurrence.endCharacter, encoding),
-		descriptor.name,
+		name ?? descriptor.name,
 	);
 }
 

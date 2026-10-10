@@ -76,11 +76,16 @@ function firstProblemLine(stderr: string): string | undefined {
 		.find((line) => line !== "" && !line.startsWith("#"));
 }
 
+// A language read only from a supplied index, with the reason its indexer is never run.
+interface NotRun {
+	notRun: string;
+}
+
 // Fixed argv, checked against `scip-python index --help` 0.6.6, `scip-go index --help` 0.2.7, and
 // `rust-analyzer --help` 1.99.0. The working directory is the Package root, which is also what
 // each indexer indexes. scip-go writes progress to stdout, which is discarded; its `--quiet` would
 // also silence the stderr a failure reason comes from.
-const INDEXERS: Readonly<Record<ScipLanguage, IndexerSpec>> = {
+const INDEXERS: Readonly<Record<ScipLanguage, IndexerSpec | NotRun>> = {
 	python: { command: "scip-python", args: (outputPath) => ["index", "--output", outputPath, "--quiet"] },
 	// scip-go exits 0 with an empty stderr on a syntax error, a type error, or a missing
 	// dependency. `go build` reports each; `-o` to the null device writes no binary into the repo.
@@ -105,6 +110,9 @@ const INDEXERS: Readonly<Record<ScipLanguage, IndexerSpec>> = {
 			reasonOf: firstErrorLine,
 		},
 	},
+	// `scip-java index` runs the project's build, for Maven `mvn clean verify`, which deletes and
+	// rebuilds `target/`. Without `clean`, an up-to-date build compiles nothing and writes no index.
+	java: { notRun: "scip-java rebuilds the repo's own build output; supply an index instead" },
 };
 
 const SCIP_DIR_NAME = "scip";
@@ -175,6 +183,24 @@ function packagesToIndex(
 	);
 }
 
+// The Packages whose language has an indexer that runs, each with that indexer's spec.
+function withSpecs<Entry extends { language: ScipLanguage }>(
+	packages: readonly Entry[],
+): (Entry & { spec: IndexerSpec })[] {
+	return packages.flatMap((entry) => {
+		const spec = INDEXERS[entry.language];
+		return "notRun" in spec ? [] : [{ ...entry, spec }];
+	});
+}
+
+// Each requested language that has Packages to index but whose indexer never runs.
+function notRunLanguages(packages: readonly { language: ScipLanguage }[]): [ScipLanguage, string][] {
+	return [...new Set(packages.map((entry) => entry.language))].flatMap((language): [ScipLanguage, string][] => {
+		const entry = INDEXERS[language];
+		return "notRun" in entry ? [[language, entry.notRun]] : [];
+	});
+}
+
 interface IndexedPackage {
 	source: IndexSource;
 	checkFailure?: IndexerCheckFailure;
@@ -208,12 +234,12 @@ export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger
 	}
 
 	function indexPackage(
+		spec: IndexerSpec,
 		request: IndexerRequest,
 		pkg: DiscoveredPackage,
 		language: ScipLanguage,
 		files: string[],
 	): IndexedPackage | IndexerFailure {
-		const spec = INDEXERS[language];
 		const base = outputBaseOf(request.outDir, pkg.id);
 		const indexPath = `${base}.scip`;
 		const hashesPath = `${base}.hashes.json`;
@@ -266,8 +292,12 @@ export function createScipIndexer(indexerProcess: IndexerProcess, logger: Logger
 	return {
 		index(request) {
 			const result: IndexerResult = { sources: [], failures: [], checkFailures: [] };
-			for (const { pkg, language, files } of packagesToIndex(request)) {
-				const outcome = indexPackage(request, pkg, language, files);
+			const packages = packagesToIndex(request);
+			for (const [language, reason] of notRunLanguages(packages)) {
+				logger.info("scip indexer not run", { language, reason });
+			}
+			for (const { spec, pkg, language, files } of withSpecs(packages)) {
+				const outcome = indexPackage(spec, request, pkg, language, files);
 				if (!("source" in outcome)) {
 					result.failures.push(outcome);
 					continue;

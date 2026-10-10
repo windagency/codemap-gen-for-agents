@@ -70,6 +70,20 @@ describe("isDocumentCurrent", () => {
 		expect(isDocumentCurrent(document, source.replace("fn ready", "fn steady"))).toBe(false);
 	});
 
+	// scip-java anchors a constructor, `<init>`, on its class's name, both declared and called.
+	it("accepts a constructor occurrence that sits on its class's name", () => {
+		const source = ["public class Service {", "    List<String> lines = new ArrayList<>();", "}"].join("\n");
+		const init = "semanticdb maven maven/com.example/app 0.1.0 com/example/Service#`<init>`().";
+		const arrayList = "semanticdb maven jdk 21 java/util/ArrayList#`<init>`(+1).";
+		const document = {
+			...documentOf([occurrence(init, 0, 13, 20, true), occurrence(arrayList, 1, 29, 38, false)]),
+			relativePath: "src/Service.java",
+		};
+
+		expect(isDocumentCurrent(document, source)).toBe(true);
+		expect(isDocumentCurrent(document, source.replace("new ArrayList", "new LinkedList"))).toBe(false);
+	});
+
 	it("rejects a document whose occurrence points past the end of the file", () => {
 		expect(isDocumentCurrent(documentOf([occurrence(LOAD, 40, 0, 4, false)]), SOURCE)).toBe(false);
 	});

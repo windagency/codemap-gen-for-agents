@@ -1,4 +1,4 @@
-import type { ExtractedSymbols, RawCall, RawCallCandidate } from "src/core/types";
+import type { ExtractedSymbols, RawCall, RawCallCandidate, RawSymbol } from "src/core/types";
 import { dedupeAndSortCandidates } from "src/extraction/raw-extraction";
 import type { ScipDocument, ScipOccurrence } from "src/extraction/scip/scip-index";
 import { lastDescriptor, parseScipSymbol } from "src/extraction/scip/scip-symbol";
@@ -56,6 +56,19 @@ function occurrencesForCall(call: RawCall, calleeName: string, document: ScipDoc
 	});
 }
 
+// The same-named Symbol starting on the definition's line, else the innermost one whose lines hold
+// it: a Java method's Symbol starts on its first annotation, a line or more above its name.
+function symbolAt(symbols: readonly RawSymbol[], definition: ScipDefinitionSite): RawSymbol | undefined {
+	const named = symbols.filter((symbol) => symbol.name === definition.name);
+	const exact = named.find((symbol) => symbol.startLine === definition.line);
+	if (exact) return exact;
+	const holding = named.filter((symbol) => symbol.startLine < definition.line && definition.line <= symbol.endLine);
+	return holding.reduce<RawSymbol | undefined>(
+		(inner, symbol) => (inner && inner.startLine > symbol.startLine ? inner : symbol),
+		undefined,
+	);
+}
+
 function candidateFor(
 	occurrence: ScipOccurrence,
 	definitions: ScipDefinitions,
@@ -63,9 +76,7 @@ function candidateFor(
 ): RawCallCandidate | undefined {
 	const definition = definitions.get(occurrence.symbol);
 	if (!definition) return undefined;
-	const symbol = symbolsByFile
-		.get(definition.filePath)
-		?.symbols.find((candidate) => candidate.startLine === definition.line && candidate.name === definition.name);
+	const symbol = symbolAt(symbolsByFile.get(definition.filePath)?.symbols ?? [], definition);
 	return symbol ? { filePath: definition.filePath, localId: symbol.localId } : undefined;
 }
 

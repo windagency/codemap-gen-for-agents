@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fromBinary, toBinary } from "@bufbuild/protobuf";
@@ -7,7 +7,7 @@ import { IndexSchema } from "@scip-code/scip";
 
 // Regenerates each SCIP-indexed fixture's committed `index.scip` (documentation/adr/0056).
 // Runs the real indexer, which must already be installed (`scip-go` on PATH for Go, `rust-analyzer`
-// for Rust), then rewrites `metadata.projectRoot` to a machine-neutral URI, so the
+// for Rust, `scip-java` with a JDK and Maven for Java), then rewrites `metadata.projectRoot` to a machine-neutral URI, so the
 // committed file never records the path of whoever regenerated it. The generator resolves
 // document paths against the index file's own directory whenever `projectRoot` does not exist.
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
@@ -42,6 +42,14 @@ const FIXTURES = [
 			CARGO_TARGET_DIR: path.join(scratchDir, "target"),
 		}),
 	},
+	{
+		// scip-java runs `mvn clean verify`, which writes `target/`, so it indexes a copy. 0.12.3:
+		// 0.13's javac wrapper fails under macOS's bash 3.2.
+		name: "java-scip",
+		command: "scip-java",
+		args: ["index"],
+		inCopy: true,
+	},
 ];
 
 // Fixture names on the command line regenerate only those; none regenerates every one.
@@ -54,9 +62,13 @@ for (const fixture of selected) {
 	const fixtureDir = path.join(REPO_ROOT, "fixtures", fixture.name);
 	const scratchDir = mkdtempSync(path.join(os.tmpdir(), "codemap-scip-"));
 	const rawIndexPath = path.join(scratchDir, "index.scip");
+	const workDir = fixture.inCopy ? path.join(scratchDir, fixture.name) : fixtureDir;
 	try {
+		if (fixture.inCopy) {
+			cpSync(fixtureDir, workDir, { recursive: true, filter: (source) => path.basename(source) !== "index.scip" });
+		}
 		execFileSync(fixture.command, [...fixture.args, "--output", rawIndexPath], {
-			cwd: fixtureDir,
+			cwd: workDir,
 			stdio: "inherit",
 			env: { ...process.env, ...fixture.env?.(scratchDir) },
 		});

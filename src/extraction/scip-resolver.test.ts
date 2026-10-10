@@ -5,6 +5,7 @@ import path from "node:path";
 import type { ExtractedSymbols } from "src/core/types";
 import { createScipIndexResolver } from "src/extraction/scip-resolver";
 import { GoTreeSitterParser } from "src/extraction/tree-sitter-go/go-parser";
+import { JavaTreeSitterParser } from "src/extraction/tree-sitter-java/java-parser";
 import { PythonTreeSitterParser } from "src/extraction/tree-sitter-python/python-parser";
 import { RustTreeSitterParser } from "src/extraction/tree-sitter-rust/rust-parser";
 import { describe, expect, it } from "vitest";
@@ -240,6 +241,60 @@ describe("createScipIndexResolver with a rust-analyzer index", () => {
 	});
 });
 
+describe("createScipIndexResolver with a scip-java index", () => {
+	it("narrows calls, drops a standard-library one, and resolves an interface call to its method", () => {
+		const rootDir = copyFixture("java-scip");
+		const javaFile = (file: string) => path.join(rootDir, "src", "main", "java", "com", "example", ...file.split("/"));
+		const files = [
+			"app/Service.java",
+			"legacy/Encoder.java",
+			"storage/FileStore.java",
+			"storage/Loader.java",
+			"storage/MemoryStore.java",
+			"storage/Store.java",
+			"text/Text.java",
+		].map(javaFile);
+		const fresh = new JavaTreeSitterParser().parse(rootDir, files, files);
+		const service = javaFile("app/Service.java");
+
+		const { symbols, unreadableIndexes } = createScipIndexResolver().resolve(
+			[{ language: "java", indexPath: path.join(rootDir, "index.scip") }],
+			fresh,
+			new Map(fresh.map((extracted) => [extracted.filePath, extracted])),
+		);
+
+		expect(
+			fresh.find((extracted) => extracted.filePath === service)?.calls.map((call) => call.candidates.length),
+		).toStrictEqual([3, 1, 2, 1, 3]);
+		expect(unreadableIndexes).toStrictEqual([]);
+		// `FileStore.save` carries `@Override` on the line above its name. `lines.add` is `List.add`,
+		// outside the repo. `store.save` on a `Store` names the interface's own method.
+		expect(symbols.find((extracted) => extracted.filePath === service)?.calls).toStrictEqual([
+			{
+				callerLocalId: "run",
+				candidates: [{ filePath: javaFile("storage/FileStore.java"), localId: "save" }],
+				locations: [{ startLine: 13, endLine: 13 }],
+			},
+			{
+				callerLocalId: "run",
+				candidates: [{ filePath: javaFile("storage/Loader.java"), localId: "load" }],
+				locations: [{ startLine: 13, endLine: 13 }],
+			},
+			{
+				callerLocalId: "run",
+				candidates: [{ filePath: javaFile("text/Text.java"), localId: "normalize" }],
+				locations: [{ startLine: 13, endLine: 13 }],
+			},
+			{
+				callerLocalId: "flush",
+				candidates: [{ filePath: javaFile("storage/Store.java"), localId: "save" }],
+				locations: [{ startLine: 20, endLine: 20 }],
+			},
+		]);
+		expect(symbols.some((extracted) => extracted.indexFallback !== undefined)).toBe(false);
+	});
+});
+
 describe("createScipIndexResolver across languages", () => {
 	it("names the languages an index holds documents of, and nothing for one it cannot read", () => {
 		const resolver = createScipIndexResolver();
@@ -247,6 +302,7 @@ describe("createScipIndexResolver across languages", () => {
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "go-scip", "index.scip"))).toStrictEqual(["go"]);
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "python-scip", "index.scip"))).toStrictEqual(["python"]);
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "rust-scip", "index.scip"))).toStrictEqual(["rust"]);
+		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "java-scip", "index.scip"))).toStrictEqual(["java"]);
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "missing.scip"))).toBeUndefined();
 	});
 

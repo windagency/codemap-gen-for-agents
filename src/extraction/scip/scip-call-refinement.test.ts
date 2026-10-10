@@ -13,6 +13,8 @@ const FILE_STORE_SAVE = "scip-python python p 1 `app.storage`/FileStore#save()."
 const MEMORY_STORE_SAVE = "scip-python python p 1 `app.storage`/MemoryStore#save().";
 const NESTED_HELPER = "scip-python python p 1 `app.storage`/load().helper().";
 const STORE_SAVE = "scip-python python p 1 `app.storage`/Store#save().";
+const ANNOTATED_FLUSH = "scip-python python p 1 `app.storage`/FileStore#flush().";
+const OTHER_FLUSH = "scip-python python p 1 `app.legacy`/Writer#flush().";
 const JSON_DUMPS = "scip-python python python-stdlib 3.11 json/dumps().";
 
 function symbol(localId: string, name: string, symbolKind: RawSymbol["symbolKind"], line: number): RawSymbol {
@@ -36,11 +38,14 @@ const storage = extracted(STORAGE, [
 	symbol("save", "save", "method", 2),
 	symbol("save#2", "save", "method", 7),
 	symbol("load", "load", "function", 11),
+	// Starts on its annotation, `@Override`, one line above the name the index anchors on.
+	symbol("flush", "flush", "method", 16),
 ]);
 const legacy = extracted(LEGACY, [
 	symbol("load", "load", "function", 1),
 	symbol("dumps", "dumps", "method", 6),
 	symbol("helper", "helper", "function", 9),
+	symbol("flush", "flush", "method", 12),
 ]);
 
 const storageDocument = documentOf("app/storage.py", [
@@ -49,8 +54,12 @@ const storageDocument = documentOf("app/storage.py", [
 	occurrence(STORAGE_LOAD, 10, true),
 	occurrence(NESTED_HELPER, 11, true),
 	occurrence(STORE_SAVE, 14, true),
+	occurrence(ANNOTATED_FLUSH, 16, true),
 ]);
-const legacyDocument = documentOf("app/legacy.py", [occurrence(LEGACY_LOAD, 0, true)]);
+const legacyDocument = documentOf("app/legacy.py", [
+	occurrence(LEGACY_LOAD, 0, true),
+	occurrence(OTHER_FLUSH, 11, true),
+]);
 
 function call(line: number, candidates: { filePath: string; localId: string }[]): RawCall {
 	return { callerLocalId: "run", candidates, locations: [{ startLine: line, endLine: line }] };
@@ -126,6 +135,20 @@ describe("refineCalls", () => {
 		const calls = refine([call(9, [{ filePath: LEGACY, localId: "dumps" }])], [occurrence(JSON_DUMPS, 8, false)]);
 
 		expect(calls).toStrictEqual([]);
+	});
+
+	it("maps a definition to the same-named Symbol whose lines hold it, past a leading annotation", () => {
+		const calls = refine(
+			[
+				call(8, [
+					{ filePath: LEGACY, localId: "flush" },
+					{ filePath: STORAGE, localId: "flush" },
+				]),
+			],
+			[occurrence(ANNOTATED_FLUSH, 7, false)],
+		);
+
+		expect(calls).toStrictEqual([call(8, [{ filePath: STORAGE, localId: "flush" }])]);
 	});
 
 	it("keeps tree-sitter's candidates when the index target is in the repo but not a Symbol", () => {
