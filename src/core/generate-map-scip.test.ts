@@ -136,6 +136,16 @@ describe("generateMap with a SCIP index", () => {
 		expect(map.warnings).toStrictEqual([]);
 	});
 
+	it("reads <rootDir>/index.scip for Java, resolving an interface call to the interface's method", () => {
+		const map = generate(copyFixture("java-scip"));
+
+		expect(callTargetsOf(map, `${JAVA_SERVICE}#run`)).toStrictEqual(JAVA_INDEX_TARGETS);
+		expect(callTargetsOf(map, `${JAVA_SERVICE}#flush`)).toStrictEqual([
+			"src/main/java/com/example/storage/Store.java#save",
+		]);
+		expect(map.warnings).toStrictEqual([]);
+	});
+
 	it("reads <rootDir>/index.scip for Rust, keeping both impls for a call through a trait", () => {
 		const map = generate(copyFixture("rust-scip"));
 
@@ -144,6 +154,15 @@ describe("generateMap with a SCIP index", () => {
 		expect(map.warnings).toStrictEqual([]);
 	});
 });
+
+// `lines.add` is `List.add`, outside the repo. `store.save` on a `FileStore` keeps its own impl,
+// though `@Override` sits on the line above the name.
+const JAVA_INDEX_TARGETS = [
+	"src/main/java/com/example/storage/FileStore.java#save",
+	"src/main/java/com/example/storage/Loader.java#load",
+	"src/main/java/com/example/text/Text.java#normalize",
+];
+const JAVA_SERVICE = "src/main/java/com/example/app/Service.java";
 
 // `lines.push` is `Vec::push`, outside the repo, so its same-name guess is dropped.
 const RUST_INDEX_TARGETS = ["src/storage.rs#save", "src/text.rs#normalize"];
@@ -311,6 +330,19 @@ describe("generateMap with runIndexers", () => {
 		expect(callTargetsOf(map, "app/service.go#Run")).toStrictEqual(GO_INDEX_TARGETS);
 		expect(map.warnings).toStrictEqual([warning]);
 		expect(reused.warnings).toStrictEqual([warning]);
+	});
+
+	it("never runs scip-java, and keeps tree-sitter's candidates for Java with no index", () => {
+		const rootDir = copyFixture("java-scip");
+		fs.rmSync(path.join(rootDir, "index.scip"));
+		const { runsLog } = fakeIndexerOnPath("scip-java", path.join(FIXTURES_DIR, "java-scip"));
+
+		const map = generate(rootDir, { runIndexers: true });
+
+		expect(runsIn(runsLog)).toStrictEqual([]);
+		expect(callTargetsOf(map, `${JAVA_SERVICE}#run`)).toHaveLength(7);
+		expect(map.warnings).toStrictEqual([]);
+		expect(fs.existsSync(path.join(rootDir, "target"))).toBe(false);
 	});
 
 	it("runs rust-analyzer in the crate root when no index was supplied", () => {

@@ -34,6 +34,7 @@ const SCENARIOS: FixtureScenario[] = [
 	{ name: "python-scip", exclude: [] },
 	{ name: "go-scip", exclude: [] },
 	{ name: "rust-scip", exclude: [] },
+	{ name: "java-scip", exclude: [] },
 	{ name: "polyglot-repo", exclude: [] },
 ];
 

@@ -276,6 +276,40 @@ describe("createScipIndexer", () => {
 		]);
 	});
 
+	// scip-java runs `mvn clean verify`, which deletes and rebuilds the repo's `target/`.
+	it("never runs scip-java, and logs once that Java is supplied-index only", () => {
+		const { rootDir, request } = setUpRepo();
+		fs.mkdirSync(path.join(rootDir, "services", "api", "src"), { recursive: true });
+		fs.writeFileSync(path.join(rootDir, "services", "api", "src", "App.java"), "class App {}\n");
+		const javaRequest: IndexerRequest = {
+			...request,
+			languages: ["java"],
+			structure: {
+				...request.structure,
+				programFiles: [...request.structure.programFiles, "services/api/src/App.java"],
+				packages: [...request.structure.packages, { id: "services/api@java", name: "api", language: "java" }],
+				fileOwners: {
+					...request.structure.fileOwners,
+					"services/api/src/App.java": { packageId: "services/api@java", directoryId: "services/api/src" },
+				},
+			},
+		};
+		const { process, commands } = fakeProcess();
+		const { logger, calls } = fakeLogger();
+
+		const result = createScipIndexer(process, logger).index(javaRequest);
+
+		expect(commands).toStrictEqual([]);
+		expect(result).toStrictEqual({ sources: [], failures: [], checkFailures: [] });
+		expect(calls).toStrictEqual([
+			[
+				"info",
+				"scip indexer not run",
+				{ language: "java", reason: "scip-java rebuilds the repo's own build output; supply an index instead" },
+			],
+		]);
+	});
+
 	it("runs nothing for a language left out of the request", () => {
 		const { request } = setUpRepo();
 		const { process, commands } = fakeProcess();

@@ -92,6 +92,12 @@ describe("loadConfig", () => {
 		expect(loadConfig(rootDir).scipIndexes).toStrictEqual({ go: "go.scip" });
 	});
 
+	it("reads a Java scipIndexes entry from the config file", () => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ scipIndexes: { java: "java.scip" } }));
+
+		expect(loadConfig(rootDir).scipIndexes).toStrictEqual({ java: "java.scip" });
+	});
+
 	it("reads a Rust scipIndexes entry from the config file", () => {
 		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ scipIndexes: { rust: "rust.scip" } }));
 
@@ -101,7 +107,7 @@ describe("loadConfig", () => {
 	it("rejects a scipIndexes language with no SCIP support yet", () => {
 		fs.writeFileSync(
 			path.join(rootDir, "codemap.config.json"),
-			JSON.stringify({ scipIndexes: { java: "index.scip" } }),
+			JSON.stringify({ scipIndexes: { kotlin: "index.scip" } }),
 		);
 
 		expect(() => loadConfig(rootDir)).toThrow(/scipIndexes/);
