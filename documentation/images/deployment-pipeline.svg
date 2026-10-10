@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 808" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <title>Pipeline overview: pushing or opening a PR against main, release/**, or int runs ci.yml's verify, lint-commits, gitleaks and node-compat jobs, dependency-review.yml, and pr-title.yml's Validate PR title check; feat-/fix- PRs into int also run ci.yml's tdd-order job; PRs into main also run allowed-merge-source.yml's check; merging into main or release/** triggers publish.yml in the npm environment, which re-runs verify, writes an SBOM, then runs semantic-release, forking into a staged npm package that a maintainer approves with 2FA, a GitHub Release with the SBOM, and a version-bump git commit; merging into int produces no release</title>
+  <title>Pipeline overview: pushing or opening a PR against main, release/**, or int runs ci.yml's verify, lint-commits, gitleaks and node-compat jobs, dependency-review.yml, and pr-title.yml's Validate PR title check; feat-/fix- PRs into int also run ci.yml's tdd-order job; PRs into main also run allowed-merge-source.yml's check; merging into main, int or release/** triggers publish.yml in the npm environment, which re-runs verify, writes an SBOM, then runs semantic-release, forking into a staged npm package that a maintainer approves with 2FA, a GitHub Release with the SBOM, and a version-bump git commit; main releases to latest, int releases an rc prerelease to the rc dist-tag</title>
   <style>
     :root {
       /* host-independent: safe against a host page whose true background
@@ -33,7 +33,7 @@
     </marker>
   </defs>
 
-  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">Core checks run on every push/PR; only main and release/** can release - int never does</text>
+  <text x="20" y="28" font-size="14" font-weight="700" fill="var(--text-primary)">Core checks run on every push/PR; main and release/** release, int releases an rc prerelease</text>
 
   <!-- entry -->
   <text x="620" y="58" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">push / PR → main · release/** · int</text>
@@ -117,23 +117,22 @@
     <text x="500" y="230" font-size="11" fill="var(--text-secondary)" text-anchor="middle">PR merged</text>
     <line x1="500" y1="238" x2="500" y2="250" stroke="var(--arrow)" stroke-width="1.5"/>
 
-    <!-- split: main/release/** continues straight down; int forks right to a dead end -->
     <line x1="500" y1="250" x2="500" y2="254" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
-    <line x1="500" y1="250" x2="860" y2="254" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
-    <text x="690" y="244" font-size="10.5" fill="var(--text-muted)" text-anchor="middle">int</text>
 
     <!-- publish -->
     <rect x="310" y="254" width="380" height="86" rx="10" fill="none" stroke="var(--box-stroke)" stroke-width="1.25"/>
     <text x="500" y="280" font-size="14" font-weight="700" fill="var(--text-primary)" text-anchor="middle">publish</text>
-    <text x="500" y="300" font-size="11" fill="var(--text-secondary)" text-anchor="middle">publish.yml job · push to main or release/**</text>
+    <text x="500" y="300" font-size="11" fill="var(--text-secondary)" text-anchor="middle">publish.yml job · push to main, int or release/**</text>
     <text x="500" y="316" font-size="11" fill="var(--text-secondary)" text-anchor="middle">re-runs the full verify suite, then runs semantic-release</text>
     <text x="500" y="332" font-size="11" fill="var(--text-secondary)" text-anchor="middle">npm environment · OIDC, no npm token · writes the SBOM</text>
 
-    <!-- int: dead end, no publish step -->
+    <!-- channel: which dist-tag a release lands on -->
     <rect x="760" y="254" width="200" height="86" rx="10" fill="var(--panel-fill)" stroke="var(--box-stroke)" stroke-width="1.25"/>
-    <text x="860" y="280" font-size="13.5" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">int</text>
-    <text x="860" y="300" font-size="11" fill="var(--text-secondary)" text-anchor="middle">merged - no release</text>
-    <text x="860" y="316" font-size="11" fill="var(--text-secondary)" text-anchor="middle">reaches main via its own PR</text>
+    <text x="860" y="280" font-size="13.5" font-weight="700" fill="var(--text-on-fill)" text-anchor="middle">channel</text>
+    <text x="860" y="300" font-size="11" fill="var(--text-secondary)" text-anchor="middle">main → latest</text>
+    <text x="860" y="316" font-size="11" fill="var(--text-secondary)" text-anchor="middle">int → rc, as x.y.z-rc.N</text>
+    <text x="860" y="332" font-size="11" fill="var(--text-secondary)" text-anchor="middle">release/** → its own range</text>
+    <line x1="690" y1="297" x2="760" y2="297" stroke="var(--arrow)" stroke-width="1.5" stroke-dasharray="4 3"/>
 
     <line x1="500" y1="340" x2="500" y2="378" stroke="var(--arrow)" stroke-width="1.5" marker-end="url(#arrow2)"/>
 
@@ -166,6 +165,6 @@
     <text x="740" y="568" font-size="11" fill="var(--text-secondary)" text-anchor="middle">version, [skip ci]</text>
 
     <line x1="-82" y1="616" x2="1082" y2="616" stroke="var(--divider)" stroke-width="1"/>
-    <text x="500" y="642" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">Release pipeline · int runs checks only, no publish step · publish.yml always re-runs verify before semantic-release decides</text>
+    <text x="500" y="642" font-size="11.5" fill="var(--text-secondary)" text-anchor="middle">Release pipeline · int publishes rc prereleases · publish.yml always re-runs verify before semantic-release decides</text>
   </g>
 </svg>
