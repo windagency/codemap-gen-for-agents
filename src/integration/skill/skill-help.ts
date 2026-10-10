@@ -13,15 +13,16 @@ Options (both commands):
   --config <path>   Config file path (default: <root>/codemap.config.json)
   --include-tests   Include test files in discovery and Module clustering
   --scip-index <language>=<path>
-                    SCIP index refining that language's call targets (python or go,
-                    repeatable per language; default: <root>/index.scip if present)
+                    SCIP index refining that language's call targets (python, go, or
+                    rust, repeatable per language; default: <root>/index.scip if present)
   -h, --help        Show this help and exit
 
 Options (generate only):
   --force           Skip the incremental cache and re-extract every file
-  --run-indexers    Run scip-python or scip-go for each Python or Go Package with no
-                    supplied index, writing under <out>/scip/. Runs the repo's own
-                    tooling: only use it on a repo you would build yourself
+  --run-indexers    Run scip-python, scip-go, or rust-analyzer for each Python, Go,
+                    or Rust Package with no supplied index, writing under <out>/scip/.
+                    Runs the repo's own tooling: only use it on a repo you would build
+                    yourself
 
 Options (read only):
   --path <p>        Prefix/subtree filter; "." is the whole repo

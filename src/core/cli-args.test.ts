@@ -120,6 +120,10 @@ describe("--scip-index", () => {
 		).toStrictEqual({ python: "py.scip", go: "go.scip" });
 	});
 
+	it("maps Rust to an index path", () => {
+		expect(parseGenerateArgs(["--scip-index", "rust=rust.scip"]).scipIndexes).toStrictEqual({ rust: "rust.scip" });
+	});
+
 	it("keeps an '=' inside the path", () => {
 		expect(parseGenerateArgs(["--scip-index", "python=out/a=b.scip"]).scipIndexes).toStrictEqual({
 			python: "out/a=b.scip",
@@ -131,7 +135,7 @@ describe("--scip-index", () => {
 	});
 
 	it("rejects a language with no SCIP support yet", () => {
-		expect(() => parseGenerateArgs(["--scip-index", "rust=index.scip"])).toThrow(/--scip-index.*python, go/);
+		expect(() => parseGenerateArgs(["--scip-index", "java=index.scip"])).toThrow(/--scip-index.*python, go, rust/);
 	});
 
 	it("rejects a value with no language", () => {

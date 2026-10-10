@@ -29,6 +29,15 @@ function sliceCharacters(line: string, start: number, end: number, encoding: Pos
 	}
 }
 
+// rust-analyzer anchors an operator-trait method on its operator token, sometimes on whitespace,
+// and an impl's own type on `Self`. Such text holds no name to compare. An empty slice, or one
+// holding any letter or digit, still has to be the name itself.
+const OPERATOR_OR_SPACE = /^[^\p{L}\p{N}_]+$/u;
+
+function isAnchored(text: string, name: string): boolean {
+	return text === name || text === "Self" || OPERATOR_OR_SPACE.test(text);
+}
+
 // Whether one occurrence still matches the file. A local symbol, a module-path occurrence, a
 // zero-width one, and one spanning lines carry no checkable name, so only their line must exist.
 function isOccurrenceCurrent(occurrence: ScipOccurrence, lines: string[], encoding: PositionEncoding): boolean {
@@ -42,7 +51,10 @@ function isOccurrenceCurrent(occurrence: ScipOccurrence, lines: string[], encodi
 	if (!descriptor || !ANCHORED_SUFFIXES.has(descriptor.suffix) || isZeroWidth || !isSingleLine) return true;
 
 	const line = lines[occurrence.startLine] ?? "";
-	return sliceCharacters(line, occurrence.startCharacter, occurrence.endCharacter, encoding) === descriptor.name;
+	return isAnchored(
+		sliceCharacters(line, occurrence.startCharacter, occurrence.endCharacter, encoding),
+		descriptor.name,
+	);
 }
 
 export interface ContentHashes {

@@ -45,6 +45,31 @@ describe("isDocumentCurrent", () => {
 		expect(isDocumentCurrent(document, shifted)).toBe(false);
 	});
 
+	// rust-analyzer anchors an operator-trait method on its operator, and an impl's own type on `Self`.
+	it("skips an occurrence that sits on an operator, whitespace, or Self instead of a name", () => {
+		const source = [
+			"impl Disk {",
+			"    fn ready(&self) -> bool {",
+			"        !self.empty() && Self::check()",
+			"    }",
+			"}",
+		].join("\n");
+		const ready = "rust-analyzer cargo p 0.1.0 impl#[Disk]ready().";
+		const not = "rust-analyzer cargo core https://github.com/rust-lang/rust/library/core ops/bit/Not#not().";
+		const document = {
+			...documentOf([
+				occurrence(ready, 1, 7, 12, true),
+				occurrence(not, 2, 8, 9, false),
+				occurrence(not, 2, 21, 22, false),
+				occurrence("rust-analyzer cargo p 0.1.0 impl#[Disk]", 2, 25, 29, false),
+			]),
+			relativePath: "src/disk.rs",
+		};
+
+		expect(isDocumentCurrent(document, source)).toBe(true);
+		expect(isDocumentCurrent(document, source.replace("fn ready", "fn steady"))).toBe(false);
+	});
+
 	it("rejects a document whose occurrence points past the end of the file", () => {
 		expect(isDocumentCurrent(documentOf([occurrence(LOAD, 40, 0, 4, false)]), SOURCE)).toBe(false);
 	});

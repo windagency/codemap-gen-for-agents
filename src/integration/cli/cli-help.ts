@@ -12,9 +12,10 @@ Options:
   --force           Skip the incremental cache and re-extract every file
   --include-tests   Include test files in discovery and Module clustering
   --scip-index <language>=<path>
-                    SCIP index refining that language's call targets (python or go,
-                    repeatable per language; default: <root>/index.scip if present)
-  --run-indexers    Run scip-python or scip-go for each Python or Go Package with no
-                    supplied index, writing under <out>/scip/. Runs the repo's own
-                    tooling: only use it on a repo you would build yourself
+                    SCIP index refining that language's call targets (python, go, or
+                    rust, repeatable per language; default: <root>/index.scip if present)
+  --run-indexers    Run scip-python, scip-go, or rust-analyzer for each Python, Go,
+                    or Rust Package with no supplied index, writing under <out>/scip/.
+                    Runs the repo's own tooling: only use it on a repo you would build
+                    yourself
   -h, --help        Show this help and exit`;

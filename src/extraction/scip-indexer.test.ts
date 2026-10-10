@@ -66,6 +66,34 @@ function withGoPackage(rootDir: string, request: IndexerRequest): IndexerRequest
 
 const GO_BUILD_ERRORS = "# example.com/api\nmain.go:3:9: undefined: x\nmain.go:4:9: undefined: y\n";
 
+// One Rust Package at `services/api@rust`, beside the Python ones.
+function withRustPackage(rootDir: string, request: IndexerRequest): IndexerRequest {
+	fs.mkdirSync(path.join(rootDir, "services", "api", "src"), { recursive: true });
+	fs.writeFileSync(path.join(rootDir, "services", "api", "Cargo.toml"), '[package]\nname = "api"\n');
+	fs.writeFileSync(path.join(rootDir, "services", "api", "src", "lib.rs"), "pub fn run() {}\n");
+	return {
+		...request,
+		languages: ["rust"],
+		structure: {
+			...request.structure,
+			programFiles: [...request.structure.programFiles, "services/api/src/lib.rs"],
+			packages: [...request.structure.packages, { id: "services/api@rust", name: "api", language: "rust" }],
+			fileOwners: {
+				...request.structure.fileOwners,
+				"services/api/src/lib.rs": { packageId: "services/api@rust", directoryId: "services/api/src" },
+			},
+		},
+	};
+}
+
+// `--message-format=short` puts warnings before errors, and a summary line after them.
+const CARGO_CHECK_ERRORS = [
+	"src/lib.rs:7:4: warning: function `unused` is never used",
+	"src/lib.rs:2:5: error[E0308]: mismatched types: expected `String`, found `&str`",
+	"error: could not compile `api` (lib) due to 1 previous error",
+	"",
+].join("\n");
+
 function sha256(filePath: string): string {
 	return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
@@ -191,6 +219,63 @@ describe("createScipIndexer", () => {
 		expect(notIndexed.failures).toHaveLength(1);
 	});
 
+	it("runs cargo check, then rust-analyzer, in each Rust Package's root, with build output under <outDir>/scip/", () => {
+		const { rootDir, outDir, request } = setUpRepo();
+		const { process, commands } = fakeProcess();
+		const rustIndex = path.join(outDir, "scip", "services%2Fapi%40rust.scip");
+		const lib = path.join(rootDir, "services", "api", "src", "lib.rs");
+		const cwd = path.join(rootDir, "services", "api");
+		// biome-ignore lint/style/useNamingConvention: environment variable name
+		const env = { CARGO_TARGET_DIR: path.join(outDir, "scip", "cargo-target") };
+
+		const result = createScipIndexer(process, fakeLogger().logger).index(withRustPackage(rootDir, request));
+
+		expect(commands).toStrictEqual([
+			{
+				command: "cargo",
+				args: ["check", "--locked", "--all-targets", "--message-format=short", "--quiet"],
+				cwd,
+				timeoutMs: 600_000,
+				env,
+			},
+			{
+				command: "rust-analyzer",
+				args: ["scip", ".", "--output", rustIndex],
+				cwd,
+				timeoutMs: 600_000,
+				env,
+				detail: "first-error",
+			},
+		]);
+		expect(result).toStrictEqual({
+			sources: [{ language: "rust", indexPath: rustIndex, fileHashes: { [lib]: sha256(lib) } }],
+			failures: [],
+			checkFailures: [],
+		});
+	});
+
+	it("reports cargo check's first error, past any warning, and keeps the index", () => {
+		const { rootDir, request } = setUpRepo();
+		const failingCheck = fakeProcess({
+			exits: {
+				cargo: { ok: false, reason: "exited with status 101: error: could not compile", stderr: CARGO_CHECK_ERRORS },
+			},
+		});
+
+		const result = createScipIndexer(failingCheck.process, fakeLogger().logger).index(
+			withRustPackage(rootDir, request),
+		);
+
+		expect(result.sources).toHaveLength(1);
+		expect(result.checkFailures).toStrictEqual([
+			{
+				packageId: "services/api@rust",
+				check: "cargo check",
+				reason: "src/lib.rs:2:5: error[E0308]: mismatched types: expected `String`, found `&str`",
+			},
+		]);
+	});
+
 	it("runs nothing for a language left out of the request", () => {
 		const { request } = setUpRepo();
 		const { process, commands } = fakeProcess();
@@ -216,6 +301,78 @@ describe("createScipIndexer", () => {
 			rootDir,
 			path.join(rootDir, "services", "api"),
 			rootDir,
+		]);
+	});
+
+	// A new lockfile can clear a check failure, and a manifest edit can change what the index reads.
+	it("re-runs when its Package's manifest or lockfile changes, though neither is a source file", () => {
+		const { rootDir, request } = setUpRepo();
+		const rustRequest = withRustPackage(rootDir, request);
+		const { process, commands } = fakeProcess();
+		const indexer = createScipIndexer(process, fakeLogger().logger);
+
+		indexer.index(rustRequest);
+		indexer.index(rustRequest);
+		fs.writeFileSync(path.join(rootDir, "services", "api", "Cargo.lock"), "version = 4\n");
+		const relocked = indexer.index(rustRequest);
+		indexer.index(rustRequest);
+		fs.appendFileSync(path.join(rootDir, "services", "api", "Cargo.toml"), 'edition = "2021"\n');
+		indexer.index(rustRequest);
+
+		expect(commands.filter((command) => command.command === "rust-analyzer")).toHaveLength(3);
+		expect(Object.keys(relocked.sources[0]?.fileHashes ?? {})).toStrictEqual([
+			path.join(rootDir, "services", "api", "src", "lib.rs"),
+		]);
+	});
+
+	// A Cargo workspace keeps one Cargo.lock, and its shared manifest, at the workspace root.
+	it("re-runs when a manifest or lockfile in a directory above the Package changes", () => {
+		const { rootDir, request } = setUpRepo();
+		const rustRequest = withRustPackage(rootDir, request);
+		const { process, commands } = fakeProcess();
+		const indexer = createScipIndexer(process, fakeLogger().logger);
+
+		indexer.index(rustRequest);
+		fs.writeFileSync(path.join(rootDir, "Cargo.lock"), "version = 4\n");
+		indexer.index(rustRequest);
+		indexer.index(rustRequest);
+		fs.writeFileSync(path.join(rootDir, "Cargo.toml"), '[workspace]\nmembers = ["services/api"]\n');
+		indexer.index(rustRequest);
+
+		expect(commands.filter((command) => command.command === "rust-analyzer")).toHaveLength(3);
+	});
+
+	// Cargo names the lock file by its absolute path; codemap.json must not differ between machines.
+	it("reports check and indexer reasons with paths relative to the repo root", () => {
+		const { rootDir, request } = setUpRepo();
+		const other = setUpRepo();
+		const lockError = (dir: string) =>
+			`error: cannot create the lock file ${path.join(dir, "services", "api", "Cargo.lock")} because --locked was passed to prevent this`;
+		const failingCheck = fakeProcess({
+			exits: { cargo: { ok: false, reason: "exited with status 101", stderr: `${lockError(rootDir)}\n` } },
+		});
+		const failingIndexer = fakeProcess({
+			exits: {
+				"rust-analyzer": {
+					ok: false,
+					reason: `exited with status 1: error: failed to parse ${path.join(other.rootDir, "services", "api", "Cargo.toml")}`,
+					stderr: "",
+				},
+			},
+		});
+
+		const checked = createScipIndexer(failingCheck.process, fakeLogger().logger).index(
+			withRustPackage(rootDir, request),
+		);
+		const failed = createScipIndexer(failingIndexer.process, fakeLogger().logger).index(
+			withRustPackage(other.rootDir, other.request),
+		);
+
+		expect(checked.checkFailures.map((failure) => failure.reason)).toStrictEqual([
+			"error: cannot create the lock file services/api/Cargo.lock because --locked was passed to prevent this",
+		]);
+		expect(failed.failures.map((failure) => failure.reason)).toStrictEqual([
+			"exited with status 1: error: failed to parse services/api/Cargo.toml",
 		]);
 	});
 

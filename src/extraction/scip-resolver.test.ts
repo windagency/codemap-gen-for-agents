@@ -6,6 +6,7 @@ import type { ExtractedSymbols } from "src/core/types";
 import { createScipIndexResolver } from "src/extraction/scip-resolver";
 import { GoTreeSitterParser } from "src/extraction/tree-sitter-go/go-parser";
 import { PythonTreeSitterParser } from "src/extraction/tree-sitter-python/python-parser";
+import { RustTreeSitterParser } from "src/extraction/tree-sitter-rust/rust-parser";
 import { describe, expect, it } from "vitest";
 
 const FIXTURES_DIR = path.resolve(import.meta.dirname, "..", "..", "fixtures");
@@ -196,12 +197,56 @@ describe("createScipIndexResolver with a scip-go index", () => {
 	});
 });
 
+describe("createScipIndexResolver with a rust-analyzer index", () => {
+	it("narrows calls, drops a standard-library one, and keeps a call through a trait", () => {
+		const rootDir = copyFixture("rust-scip");
+		const files = ["lib.rs", "legacy.rs", "service.rs", "storage.rs", "text.rs"].map((name) =>
+			path.join(rootDir, "src", name),
+		);
+		const fresh = new RustTreeSitterParser().parse(rootDir, files, files);
+		const storage = path.join(rootDir, "src", "storage.rs");
+		const service = path.join(rootDir, "src", "service.rs");
+		const bothSaves = [
+			{ filePath: storage, localId: "save" },
+			{ filePath: storage, localId: "save#2" },
+		];
+
+		const { symbols, unreadableIndexes } = createScipIndexResolver().resolve(
+			[{ language: "rust", indexPath: path.join(rootDir, "index.scip") }],
+			fresh,
+			new Map(fresh.map((extracted) => [extracted.filePath, extracted])),
+		);
+
+		expect(
+			fresh.find((extracted) => extracted.filePath === service)?.calls.map((call) => call.candidates.length),
+		).toStrictEqual([2, 2, 1, 2]);
+		expect(unreadableIndexes).toStrictEqual([]);
+		// `lines.push` is `Vec::push`, outside the repo. `store.save` on a `dyn Store` names the
+		// trait method, which is not a Symbol, so both impls stay.
+		expect(symbols.find((extracted) => extracted.filePath === service)?.calls).toStrictEqual([
+			{
+				callerLocalId: "run",
+				candidates: [{ filePath: storage, localId: "save" }],
+				locations: [{ startLine: 5, endLine: 5 }],
+			},
+			{
+				callerLocalId: "run",
+				candidates: [{ filePath: path.join(rootDir, "src", "text.rs"), localId: "normalize" }],
+				locations: [{ startLine: 5, endLine: 5 }],
+			},
+			{ callerLocalId: "flush", candidates: bothSaves, locations: [{ startLine: 12, endLine: 12 }] },
+		]);
+		expect(symbols.some((extracted) => extracted.indexFallback !== undefined)).toBe(false);
+	});
+});
+
 describe("createScipIndexResolver across languages", () => {
 	it("names the languages an index holds documents of, and nothing for one it cannot read", () => {
 		const resolver = createScipIndexResolver();
 
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "go-scip", "index.scip"))).toStrictEqual(["go"]);
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "python-scip", "index.scip"))).toStrictEqual(["python"]);
+		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "rust-scip", "index.scip"))).toStrictEqual(["rust"]);
 		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "missing.scip"))).toBeUndefined();
 	});
 
