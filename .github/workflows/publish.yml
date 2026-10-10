@@ -2,7 +2,7 @@ name: Publish
 
 on:
   push:
-    branches: [main, "release/**"]
+    branches: [main, int, "release/**"]
 
 # Husky's documented CI setting: pnpm install's prepare script then activates no git hooks on the runner.
 # They're developer feedback; CI runs the real checks, and @semantic-release/git's release commit needs none.
@@ -12,7 +12,7 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Deployment branches: main and release/** only. npm's Trusted Publisher for this package names this
+    # Deployment branches: main, int and release/** only. npm's Trusted Publisher for this package names this
     # environment, so a publish token can only be minted for a run that passed its branch policy.
     environment: npm
     permissions:

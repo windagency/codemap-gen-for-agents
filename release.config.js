@@ -11,6 +11,9 @@ const changelogTitle = (firstRelease === -1 ? changelog : changelog.slice(0, fir
 export default {
 	branches: [
 		"main",
+		// A first group tests each change set before it reaches main: every release-worthy merge into int is
+		// staged as `<next version>-rc.<n>` on the `rc` dist-tag, never `latest`.
+		{ name: "int", prerelease: "rc", channel: "rc" },
 		{
 			name: "release/+([0-9])?(.{+([0-9]),x}).x",
 			// biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release's own lodash template, evaluated by semantic-release
