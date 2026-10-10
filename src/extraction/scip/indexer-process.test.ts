@@ -34,7 +34,7 @@ describe("createIndexerProcess", () => {
 			timeoutMs: 10_000,
 		});
 
-		expect(exit).toStrictEqual({ ok: false, reason: "exited with status 3: boom" });
+		expect(exit).toStrictEqual({ ok: false, reason: "exited with status 3: boom", stderr: "first\nboom\n" });
 	});
 
 	it("reports a command that is not installed", () => {
@@ -45,7 +45,7 @@ describe("createIndexerProcess", () => {
 			timeoutMs: 10_000,
 		});
 
-		expect(exit).toStrictEqual({ ok: false, reason: "codemap-no-such-indexer not found on PATH" });
+		expect(exit).toStrictEqual({ ok: false, reason: "codemap-no-such-indexer not found on PATH", stderr: "" });
 	});
 
 	it("stops a run that outlives its timeout", () => {
@@ -56,7 +56,7 @@ describe("createIndexerProcess", () => {
 			timeoutMs: 200,
 		});
 
-		expect(exit).toStrictEqual({ ok: false, reason: "timed out after 0.2s" });
+		expect(exit).toStrictEqual({ ok: false, reason: "timed out after 0.2s", stderr: "" });
 	});
 
 	it("passes each argument verbatim, never through a shell", () => {

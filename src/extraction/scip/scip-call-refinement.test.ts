@@ -12,6 +12,7 @@ const LEGACY_LOAD = "scip-python python p 1 `app.legacy`/load().";
 const FILE_STORE_SAVE = "scip-python python p 1 `app.storage`/FileStore#save().";
 const MEMORY_STORE_SAVE = "scip-python python p 1 `app.storage`/MemoryStore#save().";
 const NESTED_HELPER = "scip-python python p 1 `app.storage`/load().helper().";
+const STORE_SAVE = "scip-python python p 1 `app.storage`/Store#save().";
 const JSON_DUMPS = "scip-python python python-stdlib 3.11 json/dumps().";
 
 function symbol(localId: string, name: string, symbolKind: RawSymbol["symbolKind"], line: number): RawSymbol {
@@ -47,6 +48,7 @@ const storageDocument = documentOf("app/storage.py", [
 	occurrence(MEMORY_STORE_SAVE, 6, true),
 	occurrence(STORAGE_LOAD, 10, true),
 	occurrence(NESTED_HELPER, 11, true),
+	occurrence(STORE_SAVE, 14, true),
 ]);
 const legacyDocument = documentOf("app/legacy.py", [occurrence(LEGACY_LOAD, 0, true)]);
 
@@ -126,10 +128,21 @@ describe("refineCalls", () => {
 		expect(calls).toStrictEqual([]);
 	});
 
-	it("drops a call whose index target is not a Symbol in the map", () => {
-		const calls = refine([call(9, [{ filePath: LEGACY, localId: "helper" }])], [occurrence(NESTED_HELPER, 8, false)]);
+	it("keeps tree-sitter's candidates when the index target is in the repo but not a Symbol", () => {
+		const nested = call(9, [{ filePath: LEGACY, localId: "helper" }]);
 
-		expect(calls).toStrictEqual([]);
+		expect(refine([nested], [occurrence(NESTED_HELPER, 8, false)])).toStrictEqual([nested]);
+	});
+
+	// A Go interface method or a Rust trait method is defined in the repo but is not a Symbol, so
+	// the index cannot say which implementation runs.
+	it("keeps tree-sitter's candidates for a call through an interface method", () => {
+		const viaInterface = call(8, [
+			{ filePath: STORAGE, localId: "save" },
+			{ filePath: STORAGE, localId: "save#2" },
+		]);
+
+		expect(refine([viaInterface], [occurrence(STORE_SAVE, 7, false)])).toStrictEqual([viaInterface]);
 	});
 
 	it("keeps tree-sitter's candidates where the index has no occurrence for the callee", () => {

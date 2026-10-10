@@ -19,13 +19,14 @@ import {
 	languageOfExtension,
 	parsePackageDir,
 	SCIP_LANGUAGES,
+	type ScipLanguage,
 } from "src/core/languages";
 import { createConsoleLogger, currentLogContext, type Logger, withLogContext } from "src/core/observability/logger";
 import { formatSkippedFile, type SkippedFile } from "src/core/skipped-file";
 import type { ClusteredGraph, DiscoveredStructure, ExtractedSymbols } from "src/core/types";
 import type { Discovery } from "src/discovery/discovery";
 import type { Parser } from "src/extraction/parser";
-import type { IndexerFailure, IndexerResult, ScipIndexer } from "src/extraction/scip-indexer";
+import type { IndexerResult, ScipIndexer } from "src/extraction/scip-indexer";
 import type { IndexResolver, IndexSource } from "src/extraction/scip-resolver";
 import type { GraphBuilder } from "src/graph-building/graph-builder";
 import type { Transformer } from "src/output/transformer";
@@ -79,15 +80,27 @@ function computeCurrentEpoch(
 }
 
 // documentation/adr/0056 decision 2: an explicit path per language, else `<rootDir>/index.scip`
-// when that file exists. An explicit path that does not exist is still a source, so the run warns
-// about it instead of silently ignoring it.
-function resolveIndexSources(rootDir: string, scipIndexes: ScipIndexPaths): IndexSource[] {
+// when that file exists and holds documents of that language. An explicit path that does not
+// exist is still a source, so the run warns about it instead of silently ignoring it. So is an
+// unreadable default, for every language, so the run warns about it once. `covered` leaves that
+// unreadable default out: it holds nothing, so it must not stop an indexer from running.
+function resolveIndexSources(
+	rootDir: string,
+	scipIndexes: ScipIndexPaths,
+	indexResolver: IndexResolver,
+): { sources: IndexSource[]; covered: ScipLanguage[] } {
 	const defaultPath = path.join(rootDir, DEFAULT_SCIP_INDEX_FILE_NAME);
-	const hasDefault = fs.existsSync(defaultPath);
-	return SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
-		const indexPath = scipIndexes[language] ?? (hasDefault ? defaultPath : undefined);
+	const needsDefault = SCIP_LANGUAGES.some((language) => scipIndexes[language] === undefined);
+	const readable = needsDefault && fs.existsSync(defaultPath) ? indexResolver.languagesIn(defaultPath) : [];
+	const defaultLanguages: readonly ScipLanguage[] = readable ?? SCIP_LANGUAGES;
+	const sources = SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
+		const indexPath = scipIndexes[language] ?? (defaultLanguages.includes(language) ? defaultPath : undefined);
 		return indexPath === undefined ? [] : [{ language, indexPath: path.resolve(indexPath) }];
 	});
+	const covered = SCIP_LANGUAGES.filter(
+		(language) => scipIndexes[language] !== undefined || (readable ?? []).includes(language),
+	);
+	return { sources, covered };
 }
 
 // Decision 5: an index's content is an epoch input, so a regenerated index re-extracts every file
@@ -114,12 +127,12 @@ function displayPath(absolutePath: string, roots: string[]): string {
 }
 
 // A file's stored fallback reason, cached or fresh, each index the resolver could not read, and
-// each indexer run that produced no index.
+// each indexer run that produced no index, then each index whose pre-index check failed.
 function collectIndexWarnings(
 	roots: string[],
 	symbols: ExtractedSymbols[],
 	unreadableIndexes: { indexPath: string; reason: string }[],
-	indexerFailures: IndexerFailure[],
+	{ failures, checkFailures }: Pick<IndexerResult, "failures" | "checkFailures">,
 ): IndexWarning[] {
 	return [
 		...symbols.flatMap((extracted): IndexWarning[] =>
@@ -130,11 +143,17 @@ function collectIndexWarnings(
 			file: displayPath(indexPath, roots),
 			detail: reason,
 		})),
-		...indexerFailures.map(({ packageId, indexer, reason }) => ({
+		...failures.map(({ packageId, indexer, reason }) => ({
 			reason: "indexer-failed" as const,
 			file: packageId,
 			detail: reason,
 			indexer,
+		})),
+		...checkFailures.map(({ packageId, check, reason }) => ({
+			reason: "indexer-check-failed" as const,
+			file: packageId,
+			detail: reason,
+			indexer: check,
 		})),
 	];
 }
@@ -438,7 +457,9 @@ export function createCodemapGenerator(
 			indexerTimeoutSeconds = DEFAULT_INDEXER_TIMEOUT_SECONDS,
 		} = options;
 		const cachePath = path.join(outDir, CACHE_FILE_NAME);
-		const suppliedSources = indexResolver ? resolveIndexSources(rootDir, scipIndexes) : [];
+		const supplied = indexResolver
+			? resolveIndexSources(rootDir, scipIndexes, indexResolver)
+			: { sources: [], covered: [] };
 
 		const structure = timer.run("discover", () => discovery.discover(rootDir, exclude, includeTests));
 		// Decision 1 and 2: only for a language with no supplied index, and never from `read`.
@@ -449,14 +470,12 @@ export function createCodemapGenerator(
 							rootDir,
 							outDir,
 							structure,
-							languages: SCIP_LANGUAGES.filter(
-								(language) => !suppliedSources.some((source) => source.language === language),
-							),
+							languages: SCIP_LANGUAGES.filter((language) => !supplied.covered.includes(language)),
 							timeoutSeconds: indexerTimeoutSeconds,
 						}),
 					)
-				: { sources: [], failures: [] };
-		const indexSources = [...suppliedSources, ...indexerResult.sources];
+				: { sources: [], failures: [], checkFailures: [] };
+		const indexSources = [...supplied.sources, ...indexerResult.sources];
 
 		const { files, currentEpoch, cacheDiff } = timer.run("discover", () => {
 			// Discovery's ids are repo-relative (they double as node ids); the cache and Parser need
@@ -524,7 +543,7 @@ export function createCodemapGenerator(
 			[rootDir, path.resolve(inputRootDir)],
 			symbolsForGraph,
 			unreadableIndexes,
-			indexerResult.failures,
+			indexerResult,
 		);
 
 		const { json, html } = timer.run("transform", () => ({

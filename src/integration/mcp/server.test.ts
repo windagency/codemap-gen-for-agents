@@ -144,7 +144,7 @@ describe("createMcpServer", () => {
 	it("rejects a scipIndexes language with no SCIP support yet", async () => {
 		const client = await connectedClient();
 
-		const raw = await client.callTool({ name: "generate", arguments: { scipIndexes: { go: "index.scip" } } });
+		const raw = await client.callTool({ name: "generate", arguments: { scipIndexes: { rust: "index.scip" } } });
 
 		expect(raw.isError).toBe(true);
 	});

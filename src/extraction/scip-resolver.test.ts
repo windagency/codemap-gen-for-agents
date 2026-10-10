@@ -4,15 +4,16 @@ import os from "node:os";
 import path from "node:path";
 import type { ExtractedSymbols } from "src/core/types";
 import { createScipIndexResolver } from "src/extraction/scip-resolver";
+import { GoTreeSitterParser } from "src/extraction/tree-sitter-go/go-parser";
 import { PythonTreeSitterParser } from "src/extraction/tree-sitter-python/python-parser";
 import { describe, expect, it } from "vitest";
 
-const FIXTURE_DIR = path.resolve(import.meta.dirname, "..", "..", "fixtures", "python-scip");
+const FIXTURES_DIR = path.resolve(import.meta.dirname, "..", "..", "fixtures");
 
 // A throwaway copy, so a test can edit a file or drop the index without touching the fixture.
-function copyFixture(): string {
+function copyFixture(name = "python-scip"): string {
 	const copy = fs.mkdtempSync(path.join(os.tmpdir(), "codemap-scip-resolver-"));
-	fs.cpSync(FIXTURE_DIR, copy, { recursive: true });
+	fs.cpSync(path.join(FIXTURES_DIR, name), copy, { recursive: true });
 	return fs.realpathSync(copy);
 }
 
@@ -140,5 +141,82 @@ describe("createScipIndexResolver", () => {
 
 		expect(serviceOf(symbols, rootDir)?.indexFallback).toBeUndefined();
 		expect(symbols.find((extracted) => extracted.filePath === storagePath)?.indexFallback).toBe("index-stale");
+	});
+});
+
+describe("createScipIndexResolver with a scip-go index", () => {
+	const goFiles = (rootDir: string) =>
+		["app/normalize.go", "app/service.go", "legacy/legacy.go", "storage/storage.go"].map((file) =>
+			path.join(rootDir, ...file.split("/")),
+		);
+
+	it("narrows a method call and an unqualified call to the targets the index names", () => {
+		const rootDir = copyFixture("go-scip");
+		const files = goFiles(rootDir);
+		const fresh = new GoTreeSitterParser().parse(rootDir, files, files);
+		const storage = path.join(rootDir, "storage", "storage.go");
+		const legacy = path.join(rootDir, "legacy", "legacy.go");
+		const service = path.join(rootDir, "app", "service.go");
+
+		const { symbols, unreadableIndexes } = createScipIndexResolver().resolve(
+			[{ language: "go", indexPath: path.join(rootDir, "index.scip") }],
+			fresh,
+			new Map(fresh.map((extracted) => [extracted.filePath, extracted])),
+		);
+
+		expect(
+			fresh.find((extracted) => extracted.filePath === service)?.calls.map((call) => call.candidates.length),
+		).toStrictEqual([2, 1, 2, 1]);
+		expect(unreadableIndexes).toStrictEqual([]);
+		// scip-go records no occurrence for a standard-library member, so `Encode` on a
+		// `*json.Encoder` keeps tree-sitter's same-name guess.
+		expect(symbols.find((extracted) => extracted.filePath === service)?.calls).toStrictEqual([
+			{
+				callerLocalId: "Run",
+				candidates: [{ filePath: storage, localId: "Save" }],
+				locations: [{ startLine: 12, endLine: 12 }],
+			},
+			{
+				callerLocalId: "Run",
+				candidates: [{ filePath: storage, localId: "Load" }],
+				locations: [{ startLine: 12, endLine: 12 }],
+			},
+			{
+				callerLocalId: "Run",
+				candidates: [{ filePath: path.join(rootDir, "app", "normalize.go"), localId: "normalize" }],
+				locations: [{ startLine: 12, endLine: 12 }],
+			},
+			{
+				callerLocalId: "Run",
+				candidates: [{ filePath: legacy, localId: "Encode" }],
+				locations: [{ startLine: 13, endLine: 13 }],
+			},
+		]);
+		expect(symbols.some((extracted) => extracted.indexFallback !== undefined)).toBe(false);
+	});
+});
+
+describe("createScipIndexResolver across languages", () => {
+	it("names the languages an index holds documents of, and nothing for one it cannot read", () => {
+		const resolver = createScipIndexResolver();
+
+		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "go-scip", "index.scip"))).toStrictEqual(["go"]);
+		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "python-scip", "index.scip"))).toStrictEqual(["python"]);
+		expect(resolver.languagesIn(path.join(FIXTURES_DIR, "missing.scip"))).toBeUndefined();
+	});
+
+	it("reports one unreadable index once, however many languages name it", () => {
+		const missing = path.join(os.tmpdir(), "codemap-no-such-index.scip");
+
+		const { unreadableIndexes } = createScipIndexResolver().resolve(
+			[
+				{ language: "python", indexPath: missing },
+				{ language: "go", indexPath: missing },
+			],
+			[],
+			new Map(),
+		);
+
+		expect(unreadableIndexes).toMatchObject([{ indexPath: missing }]);
 	});
 });

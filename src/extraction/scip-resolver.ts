@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { extensionOf, languageOfExtension, type ScipLanguage } from "src/core/languages";
+import { extensionOf, languageOfExtension, SCIP_LANGUAGES, type ScipLanguage } from "src/core/languages";
 import type { ExtractedSymbols } from "src/core/types";
 import { buildDefinitionIndex, refineCalls } from "src/extraction/scip/scip-call-refinement";
 import type { ScipDocument, ScipIndex } from "src/extraction/scip/scip-index";
@@ -31,6 +31,9 @@ export interface IndexResolution {
 }
 
 export interface IndexResolver {
+	// The languages `indexPath` holds documents of, or undefined when it cannot be read. Lets one
+	// shared index, such as `<rootDir>/index.scip`, count only for the languages it covers.
+	languagesIn(indexPath: string): ScipLanguage[] | undefined;
 	// `fresh` is what `Parser` just extracted; `symbolsByFile` is every file's extraction this run,
 	// cached ones included, keyed by absolute path, so a call can resolve into an unchanged file.
 	resolve(
@@ -106,6 +109,7 @@ interface LoadedDocuments {
 	unreadableIndexes: UnreadableIndex[];
 }
 
+// One index can serve several languages; it is decoded, and reported unreadable, once.
 function loadDocuments(sources: IndexSource[]): LoadedDocuments {
 	const loaded: LoadedDocuments = {
 		documentsByFile: new Map(),
@@ -113,13 +117,13 @@ function loadDocuments(sources: IndexSource[]): LoadedDocuments {
 		indexedLanguages: new Set(),
 		unreadableIndexes: [],
 	};
+	const reads = new Map<string, ReturnType<typeof readScipIndex>>();
 	for (const source of sources) {
-		const read = readScipIndex(source.indexPath);
-		if (!read.ok) {
-			loaded.unreadableIndexes.push({ indexPath: source.indexPath, reason: read.reason });
-			continue;
-		}
-		addDocuments(loaded, source, read.index);
+		const known = reads.get(source.indexPath);
+		const read = known ?? readScipIndex(source.indexPath);
+		reads.set(source.indexPath, read);
+		if (read.ok) addDocuments(loaded, source, read.index);
+		else if (!known) loaded.unreadableIndexes.push({ indexPath: source.indexPath, reason: read.reason });
 	}
 	return loaded;
 }
@@ -166,6 +170,13 @@ function isIndexedLanguage(filePath: string, indexedLanguages: ReadonlySet<ScipL
 
 export function createScipIndexResolver(): IndexResolver {
 	return {
+		languagesIn(indexPath) {
+			const read = readScipIndex(indexPath);
+			if (!read.ok) return undefined;
+			return SCIP_LANGUAGES.filter((language) =>
+				read.index.documents.some((document) => isDocumentFor(document, language)),
+			);
+		},
 		resolve(sources, fresh, symbolsByFile) {
 			const { documentsByFile, recordedHashes, indexedLanguages, unreadableIndexes } = loadDocuments(sources);
 			if (indexedLanguages.size === 0) return { symbols: fresh, unreadableIndexes };
