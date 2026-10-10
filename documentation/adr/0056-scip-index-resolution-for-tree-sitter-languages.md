@@ -1,6 +1,6 @@
 # 0056: Go/Rust/Java/Python resolution comes from a SCIP index, tree-sitter stays the fallback
 
-[Back to documentation/adr/README.md](README.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
+[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md) • [Back to TESTING.md](../TESTING.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md) • [Back to SKILL.md](../../src/integration/skill/SKILL.md)
 
 ## Status
 
@@ -122,3 +122,16 @@ Each language ships with its own fixture repo and a committed `.scip` file, so t
 
 - `scip-java`'s output-path flag. Decision 1's move-afterwards approach works without it. Confirm before the Java slice.
 - The 600-second default timeout is a starting value, not a measured one. Revisit after the Python slice runs against a real repo.
+
+## Update: Python slice, supplied indexes
+
+Python reads a supplied index: `--scip-index`, `scipIndexes`, or `<rootDir>/index.scip`. `--run-indexers` and its sidecar hashes are not built yet. Where the shipped code differs from the decisions above:
+
+- **Decision 3's mechanism.** The refinement runs in `generateMap`, after `Parser.parse()`, through an `IndexResolver` wired at `compose.ts`. It does not wrap a parser in `parser-factory.ts`. `Parser.parse()` takes no per-run options and returns no warnings, so a wrapper could not learn which index to read or report a fallback without changing the interface this ADR keeps fixed.
+- **Call sites only.** Tree-sitter's line-only `EdgeLocation` is matched to an occurrence by line range and callee name. The index narrows or drops calls tree-sitter found. It does not add call sites tree-sitter never extracted, and it does not change imports. Python imports were already path-resolved; recovering irregular distribution names through the index is not done.
+- **A call into a stale file** keeps tree-sitter's candidates, since its recorded definition line may have moved.
+- **Three warnings, not two.** `index-stale` and `index-uncovered` per file, plus `index-unreadable` per index. A missing `<rootDir>/index.scip` is not a warning; a missing explicit path is.
+- **Language by extension.** `scip-python` leaves `Document.language` empty, so an empty one is matched by the document's file extension.
+- **Document root.** `scip-python` records an absolute `projectRoot`, which does not exist on another machine. Documents resolve against the recorded root if it exists, else the index's directory or one of its ancestors, whichever has the most documents on disk.
+- **Stored text.** `scip-python` does not store source text, so decision 4's anchor check is the one that runs for its indexes.
+- **License correction.** `@bufbuild/protobuf` is `(Apache-2.0 AND BSD-3-Clause)`, not Apache-2.0, and its npm tarball ships no license file. Both parts were already allowlisted. `scripts/generate-third-party-licenses.mjs` reads a vendored copy: the upstream LICENSE at tag `v2.16.0` plus the BSD header the package carries.

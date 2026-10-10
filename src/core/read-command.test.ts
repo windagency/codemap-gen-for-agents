@@ -75,6 +75,28 @@ describe("runReadCommand", () => {
 		expect(withTests.nodes.some((n) => n.id === "index.test.ts#onlyInTest")).toBe(true);
 	});
 
+	it("passes scipIndexes through to its self-healing generate, as absolute paths", () => {
+		const receivedOptions: { scipIndexes?: Record<string, string> }[] = [];
+		const fakeGenerator = {
+			generateMap(_rootDir: string, options: { scipIndexes?: Record<string, string> }) {
+				receivedOptions.push(options);
+				return {
+					json: JSON.stringify({ nodes: [], edges: [] }),
+					html: "<html></html>",
+					skippedFiles: [],
+					nodeCount: 0,
+					edgeCount: 0,
+				};
+			},
+		};
+
+		runReadCommand({ rootDir, scipIndexes: { python: "index.scip" } }, fakeGenerator);
+
+		expect(receivedOptions.map((options) => options.scipIndexes)).toStrictEqual([
+			{ python: path.join(rootDir, "index.scip") },
+		]);
+	});
+
 	it("logs each generateMap warning instead of silently discarding it, the same way generate does", () => {
 		const fakeGenerator = {
 			generateMap() {

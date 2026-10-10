@@ -16,7 +16,7 @@ Run the companion script bundled next to this file: `node "${CLAUDE_SKILL_DIR}/m
 Runs the pipeline and writes `codemap.json`/`codemap.html` to disk.
 
 ```
-node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests]
+node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--config <path>] [--force] [--include-tests] [--scip-index <language>=<path>]
 ```
 
 - `--root` - the repo to analyze; defaults to the current working directory.
@@ -24,6 +24,7 @@ node "${CLAUDE_SKILL_DIR}/main.js" generate [--root <dir>] [--out <dir>] [--conf
 - `--config` - an explicit config file path; defaults to `<root>/codemap.config.json`.
 - `--force` - bypasses the incremental extraction cache.
 - `--include-tests` - includes test files (each language's own convention; for TS/JS, `*.test.*`/`*.spec.*` or anything under `test/`, `tests/`, `__tests__/`) in discovery and Module clustering instead of excluding them by default ([ADR-0011](../../../documentation/adr/0011-exclude-test-files-by-default.md)); they're clustered into one dedicated `tests` Module rather than grouped by folder ([ADR-0010](../../../documentation/adr/0010-test-files-are-their-own-module.md)). Changes the cache epoch, so toggling it forces a full re-extraction the next run.
+- `--scip-index python=<path>` - a `scip-python` index that narrows Python call candidates to their type-checked target ([ADR-0056](../../../documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md)). Without it, `<root>/index.scip` is read when present. Files the index misses or that changed since indexing keep syntactic candidates and appear in `warnings`.
 
 Prints `{ jsonPath, htmlPath, nodeCount, edgeCount }` - never the graph itself.
 
@@ -32,13 +33,14 @@ Prints `{ jsonPath, htmlPath, nodeCount, edgeCount }` - never the graph itself.
 Self-heals: always re-runs the pipeline first, so it's safe to call without a prior `generate`, or after files changed since the last one. That regeneration refreshes `<outDir>/cache.json` on disk as a side effect - `read` still never writes `codemap.json` or `codemap.html`.
 
 ```
-node "${CLAUDE_SKILL_DIR}/main.js" read [--root <dir>] [--out <dir>] [--config <path>] [--path <p>] [--symbol-kind <k>] [--search <s>] [--include-tests]
+node "${CLAUDE_SKILL_DIR}/main.js" read [--root <dir>] [--out <dir>] [--config <path>] [--path <p>] [--symbol-kind <k>] [--search <s>] [--include-tests] [--scip-index <language>=<path>]
 ```
 
 - `--path` - matches by prefix/subtree (a Directory or Package path matches every descendant File/Symbol under it). `.` matches the whole repo; a co-located Package id like `.@go` matches only that family's files.
 - `--symbol-kind` - one of `function`, `method`, `class`, `const`, `type`, `interface`, `enum`; matches only Symbol nodes of that kind.
 - `--search` - case-insensitive substring match over node names.
 - `--include-tests` - includes test files in the graph `read` filters over, matching whatever `generate` last used; since `read` self-heals by re-running the pipeline first, pass the same `--include-tests` value used for `generate` to avoid an unnecessary full re-extraction.
+- `--scip-index` - same meaning as on `generate`; pass the same value to avoid a full re-extraction.
 
 All provided filters AND together. Omitting every filter returns the whole graph.
 

@@ -106,6 +106,39 @@ describe("strict flag parsing", () => {
 	});
 });
 
+describe("--scip-index", () => {
+	it("maps a language to an index path, on both generate and read", () => {
+		expect(parseGenerateArgs(["--scip-index", "python=build/index.scip"]).scipIndexes).toStrictEqual({
+			python: "build/index.scip",
+		});
+		expect(parseReadArgs(["--scip-index", "python=index.scip"]).scipIndexes).toStrictEqual({ python: "index.scip" });
+	});
+
+	it("keeps an '=' inside the path", () => {
+		expect(parseGenerateArgs(["--scip-index", "python=out/a=b.scip"]).scipIndexes).toStrictEqual({
+			python: "out/a=b.scip",
+		});
+	});
+
+	it("leaves scipIndexes out entirely when the flag is not given", () => {
+		expect(parseGenerateArgs([])).not.toHaveProperty("scipIndexes");
+	});
+
+	it("rejects a language with no SCIP support yet", () => {
+		expect(() => parseGenerateArgs(["--scip-index", "go=index.scip"])).toThrow(/--scip-index.*python/);
+	});
+
+	it("rejects a value with no language", () => {
+		expect(() => parseGenerateArgs(["--scip-index", "index.scip"])).toThrow(/--scip-index/);
+	});
+
+	it("rejects the same language given twice", () => {
+		expect(() => parseGenerateArgs(["--scip-index", "python=a.scip", "--scip-index", "python=b.scip"])).toThrow(
+			/python.*more than once/,
+		);
+	});
+});
+
 describe("isHelpRequest", () => {
 	it.each([
 		[["--help"]],

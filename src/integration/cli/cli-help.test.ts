@@ -6,7 +6,10 @@ describe("CLI_HELP", () => {
 		expect(CLI_HELP.startsWith(CLI_USAGE)).toBe(true);
 	});
 
-	it.each(["--root", "--out", "--config", "--force", "--include-tests", "--help", "-h"])("documents %s", (flag) => {
-		expect(CLI_HELP).toContain(flag);
-	});
+	it.each(["--root", "--out", "--config", "--force", "--include-tests", "--scip-index", "--help", "-h"])(
+		"documents %s",
+		(flag) => {
+			expect(CLI_HELP).toContain(flag);
+		},
+	);
 });
