@@ -28,7 +28,7 @@ jobs:
 
       # No registry-url: it makes setup-node write an .npmrc with a NODE_AUTH_TOKEN placeholder token, which npm
       # would send instead of the OIDC (Trusted Publishing) credential that `npm stage publish` relies on.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: package.json
           cache: pnpm
