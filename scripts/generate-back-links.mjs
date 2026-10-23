@@ -80,12 +80,14 @@ const backLinkLine = (target) =>
 
 const stale = [];
 for (const [target, refs] of referrers) {
-	if (refs.size === 0) continue;
 	const lines = read(target).split("\n");
+	const hasBackLinkLine = lines.slice(1).some((line) => line.startsWith(BACK_LINK_PREFIX));
+	// A file nobody mentions only needs a pass when it still carries a back-link line to remove.
+	if (refs.size === 0 && !hasBackLinkLine) continue;
 	if (PRINT_ONLY.has(target)) {
 		// Only a file that already carries a back-link line (the generated one) can go stale.
 		if (CHECK && lines[2]?.startsWith(BACK_LINK_PREFIX) && lines[2] !== backLinkLine(target)) stale.push(target);
-		if (!CHECK) console.log(`Not written, ${target}: ${backLinkLine(target)}`);
+		if (!CHECK) console.log(`Not written, ${target}: ${backLinkLine(target) || "remove its back-link line"}`);
 		continue;
 	}
 	if (!lines[0].startsWith("# ")) {
@@ -96,7 +98,7 @@ for (const [target, refs] of referrers) {
 	while (bodyStart < lines.length && (lines[bodyStart] === "" || lines[bodyStart].startsWith(BACK_LINK_PREFIX))) {
 		bodyStart++;
 	}
-	const header = target === ROOT_DOC ? [lines[0], ""] : [lines[0], "", backLinkLine(target), ""];
+	const header = target === ROOT_DOC || refs.size === 0 ? [lines[0], ""] : [lines[0], "", backLinkLine(target), ""];
 	const content = [...header, ...lines.slice(bodyStart)].join("\n");
 	if (content === lines.join("\n")) continue;
 	if (CHECK) stale.push(target);
