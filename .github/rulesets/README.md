@@ -26,7 +26,7 @@ Settings, Rules, Rulesets, New ruleset, Import a ruleset. Repeat per file.
 
 Then add bypass actors in the UI - GitHub excludes bypass lists from ruleset JSON, so this is a manual step every time a ruleset is (re-)imported. Two different actors, two different modes, and conflating them is the most common way to weaken these rulesets by accident:
 
-- **A human maintainer** (repository admin role), mode **pull request only**. Lets an admin merge their own already-reviewed PR without needing a second approver. Never use **always** for a human actor - that allows direct, unreviewed pushes.
+- **A human maintainer** (repository admin role), mode **pull request only**. Lets an admin merge a PR without a second approver, through `gh pr merge --admin` or the bypass option on the merge button. GitHub never counts an author's approval of their own PR, so while there is a single maintainer, every one of their PRs merges this way once its required checks pass. Never use **always** for a human actor - that allows direct, unreviewed pushes.
 - **The release automation** (this repo's dedicated release GitHub App, picked by name under "GitHub Apps"), mode **always**, on `main.json`, `release.json`, `integration.json` and `tags.json` only. `integration.json` needs it because `int` publishes release candidates, whose version-bump commit is pushed to `int` outside any pull request. This one *has* to be "always": the version-bump commit and the release tag are pushed outside any pull request, so "pull request only" would reject them. It has to be an App: the bypass list doesn't offer the GitHub Actions identity behind `GITHUB_TOKEN` at all. Know what this costs: "always" bypasses every rule in that ruleset for anything holding a token for that App - which is why its private key lives only in `publish.yml`'s secrets, and why the App must not be reused for anything else. Setup: `documentation/DEPLOYMENT.md`, "Required one-time setup".
 
 Consider switching enforcement to **Evaluate** for the first week. Violations are logged but not blocked.
@@ -50,7 +50,7 @@ Consider switching enforcement to **Evaluate** for the first week. Violations ar
 | Checks on branch creation | Yes | Skipped | Yes | None | n/a |
 | Allowed source branch | `int`, `hotfix-*` (via `allowed-merge-source` check) | Any | Any | n/a | n/a |
 
-Approvals are 1, not a larger number, on every branch that requires them here - matched to a single maintainer with a documented path to a co-maintainer, not a team of several reviewers. Raise it once there's more than one person actually reviewing.
+Approvals are 1, not a larger number, on every branch that requires them here - matched to a single maintainer with a documented path to a co-maintainer, not a team of several reviewers. Until a co-maintainer exists, nobody can give that approval to the maintainer's own PRs, so they merge through the admin bypass above. Raise it once there's more than one person actually reviewing.
 
 ## Ruleset design decisions
 
