@@ -18,6 +18,12 @@ Versioned entries below this point are written by `semantic-release` (`@semantic
 
 ### Removed
 
+## [1.1.0-rc.2](https://github.com/windagency/codemap-gen-for-agents/compare/v1.1.0-rc.1...v1.1.0-rc.2) (2026-10-23)
+
+### Bug Fixes
+
+* **deps:** require zod 4.6.7 or later ([89ad1be](https://github.com/windagency/codemap-gen-for-agents/commit/89ad1be16c9abc3326a1c07a63eadb83e1dad832))
+
 ## [1.1.0-rc.1](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.3...v1.1.0-rc.1) (2026-10-10)
 
 ### Features
