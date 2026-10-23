@@ -34,7 +34,7 @@ The packages this project's own `package.json` depends on directly.
 | tree-sitter-java | 0.23.5 | MIT | Ayman Nadeem |
 | tree-sitter-python | 0.25.0 | MIT | Max Brunsfeld |
 | tree-sitter-rust | 0.24.0 | MIT | Maxim Sokolov |
-| zod | 4.6.5 | MIT | Colin McDonnell |
+| zod | 4.6.7 | MIT | Colin McDonnell |
 
 ## Full production dependency tree
 
@@ -188,7 +188,7 @@ Every package resolved into the production tree (direct and transitive), as inst
 | type-is | 2.1.0 | MIT | - |
 | unpipe | 1.0.0 | MIT | Douglas Christopher Wilson |
 | vary | 1.1.2 | MIT | Douglas Christopher Wilson |
-| zod | 4.6.5 | MIT | Colin McDonnell |
+| zod | 4.6.7 | MIT | Colin McDonnell |
 | robust-predicates | 3.0.3 | Unlicense | Vladimir Agafonkin |
 
 ## License texts
