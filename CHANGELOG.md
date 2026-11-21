@@ -18,6 +18,12 @@ Versioned entries below this point are written by `semantic-release` (`@semantic
 
 ### Removed
 
+## [1.1.0](https://github.com/windagency/codemap-gen-for-agents/compare/v1.0.3...v1.1.0) (2026-11-21)
+
+### Features
+
+* refine call targets from SCIP indexes and ship a Claude Code plugin ([#87](https://github.com/windagency/codemap-gen-for-agents/issues/87)) ([28aa0b9](https://github.com/windagency/codemap-gen-for-agents/commit/28aa0b928cfb1b05544e8756a3ed9a2d936786a7))
+
 ## [1.1.0-rc.3](https://github.com/windagency/codemap-gen-for-agents/compare/v1.1.0-rc.2...v1.1.0-rc.3) (2026-11-21)
 
 ### Features
