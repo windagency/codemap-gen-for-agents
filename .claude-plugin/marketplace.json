@@ -1,0 +1,15 @@
+{
+	"name": "windagency",
+	"description": "Claude Code plugins from windagency.",
+	"owner": {
+		"name": "Damien TIVELET",
+		"email": "damien@wind-agency.com"
+	},
+	"plugins": [
+		{
+			"name": "codemap",
+			"source": "./plugins/codemap",
+			"description": "Structural code map for AI coding agents, served over MCP."
+		}
+	]
+}

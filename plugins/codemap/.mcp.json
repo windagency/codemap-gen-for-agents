@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"codemap": {
+			"command": "npx",
+			"args": ["-y", "-p", "@windagency/codemap-gen-for-agents@1.0.3", "codemap-mcp"]
+		}
+	}
+}
