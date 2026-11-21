@@ -21,7 +21,7 @@ These are enforced server-side by this repo's GitHub rulesets (`.github/rulesets
 
 - **Branch name** must be `feat-<name>`, `fix-<name>`, or `hotfix-<name>` (or `int`/`release/<major>.x` for release-flow work). Only `int` and `hotfix-*` may open a PR into `main` - `feat-*` and `fix-*` go into `int` first. See `CODING_RULES/10-commits-and-versioning.md`'s Branches section for the full model, and `documentation/GITFLOW.md` for how it fits together visually.
 - **Commits must be signed** (SSH or GPG) - see `documentation/GIT.md`'s "Signed commits" section for setup.
-- **On `main`/`release/**`, the PR title itself must be a valid Conventional Commit** (`CODING_RULES/10-commits-and-versioning.md` has the exact format). These branches squash-merge, so the PR title - not your individual commit messages - becomes the commit semantic-release actually reads.
+- **The PR title itself must be a valid Conventional Commit** (`CODING_RULES/10-commits-and-versioning.md` has the exact format). `release/**` squash-merges, and `int` may, so there the PR title - not your individual commit messages - becomes the commit semantic-release actually reads. `main` takes merge commits, so semantic-release reads each of your commits there.
 
 ## Rule files and when to load them
 

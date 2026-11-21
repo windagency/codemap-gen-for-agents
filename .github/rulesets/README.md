@@ -37,7 +37,7 @@ Consider switching enforcement to **Evaluate** for the first week. Violations ar
 | --- | --- | --- | --- | --- | --- |
 | Block deletion | Yes | Yes | Yes | No | Yes |
 | Block force push / move | Yes | Yes | Yes | No | Yes |
-| Linear history | Yes | Yes | No | No | n/a |
+| Linear history | No | Yes | No | No | n/a |
 | Signed commits/tags | Yes | Yes | Yes | Yes | Yes |
 | Pull request required | Yes | Yes | Yes | No | n/a |
 | Approvals | 1 | 1 | 1 | None | n/a |
@@ -45,7 +45,7 @@ Consider switching enforcement to **Evaluate** for the first week. Violations ar
 | Dismiss stale approvals | Yes | Yes | Yes | No | n/a |
 | Last push must be approved | Yes | Yes | Yes | No | n/a |
 | Resolve review threads | Yes | Yes | Yes | No | n/a |
-| Merge methods | Squash | Squash, rebase | Squash, merge | Any | n/a |
+| Merge methods | Merge | Squash, rebase | Squash, merge | Any | n/a |
 | Status checks | Strict | Strict | Not strict | None | n/a |
 | Checks on branch creation | Yes | Skipped | Yes | None | n/a |
 | Allowed source branch | `int`, `hotfix-*` (via `allowed-merge-source` check) | Any | Any | n/a | n/a |
@@ -56,13 +56,13 @@ Approvals are 1, not a larger number, on every branch that requires them here - 
 
 ### main
 
-Squash only keeps one commit per change. History stays readable and easy to revert. Strict checks mean the branch must be up to date before merging. What was tested is exactly what lands.
+Merge commits only, so linear history is off. `int` publishes release candidates, and semantic-release finds the last release by the tags reachable from a branch. A squash promotion put the release tag on a commit none of `int`'s commits lead to, so the next sync of `main` into `int` counted every one of them again and cut a stray release candidate. A merge commit keeps `int`'s commits as ancestors of the release, and semantic-release reads each of them, so a release's notes list every change. Strict checks mean the branch must be up to date before merging. What was tested is exactly what lands.
 
 Only `int` and `hotfix-*` may merge into `main`. GitHub rulesets have no native rule that restricts a pull request's source branch, so `allowed-merge-source` does it: a required check that fails unless the head branch is `int` or `hotfix-<name>` from this repository. This keeps batched work going through `int`, while still letting an urgent fix ship without waiting for `int`'s unrelated commits. The check is a routing guard, not a security boundary. Review and signed commits remain the actual gate.
 
 ### release
 
-Mirrors `main`, as release code is about to ship. Rebase is allowed so cherry-picked fixes keep their original commits. Checks are skipped on creation, so a branch can be cut from a known good commit. Used only for maintenance of an old major line, never as a route into `main`.
+Mirrors `main`'s review bar, as release code is about to ship, but keeps squash and linear history: nothing syncs back from a release branch. Rebase is allowed so cherry-picked fixes keep their original commits. Checks are skipped on creation, so a branch can be cut from a known good commit. Used only for maintenance of an old major line, never as a route into `main`.
 
 ### int
 
@@ -139,9 +139,11 @@ Accepted types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refac
 
 This matters more than local commit linting.
 
-`main` only allows squash merges. A squash commit message comes from the pull request, not from the original commits. A clean branch history can still land a badly formatted commit on `main`. semantic-release would then miss the release.
+`release/**` allows squash merges, and so does `int`. A squash commit message comes from the pull request, not from the original commits. A clean branch history can still land a badly formatted commit. semantic-release would then miss the release.
 
 Set the squash commit message to use the pull request title. Settings, General, Pull Requests, Allow squash merging, Default commit message.
+
+`main` takes merge commits, so semantic-release reads the original commits there, which `lint-commits` already checks. Keep the merge commit title at its default, "Merge pull request #N from ...": semantic-release skips it, so the PR title isn't counted a second time.
 
 Then lint titles in CI. `.github/workflows/pr-title.yml`:
 
