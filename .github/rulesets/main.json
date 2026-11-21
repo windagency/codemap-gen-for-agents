@@ -11,7 +11,6 @@
 	"rules": [
 		{ "type": "deletion" },
 		{ "type": "non_fast_forward" },
-		{ "type": "required_linear_history" },
 		{ "type": "required_signatures" },
 		{
 			"type": "pull_request",
@@ -21,7 +20,7 @@
 				"require_code_owner_review": true,
 				"require_last_push_approval": true,
 				"required_review_thread_resolution": true,
-				"allowed_merge_methods": ["squash"]
+				"allowed_merge_methods": ["merge"]
 			}
 		},
 		{
