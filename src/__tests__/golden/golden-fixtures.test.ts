@@ -30,6 +30,11 @@ const SCENARIOS: FixtureScenario[] = [
 	{ name: "rust-basics", exclude: [] },
 	{ name: "java-basics", exclude: [] },
 	{ name: "python-basics", exclude: [] },
+	// documentation/adr/0056: the committed `index.scip` narrows this fixture's ambiguous calls.
+	{ name: "python-scip", exclude: [] },
+	{ name: "go-scip", exclude: [] },
+	{ name: "rust-scip", exclude: [] },
+	{ name: "java-scip", exclude: [] },
 	{ name: "polyglot-repo", exclude: [] },
 ];
 

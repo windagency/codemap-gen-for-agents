@@ -15,7 +15,25 @@ const isTestFile = (file) => file.startsWith("src/") && /\.(test|spec)\.ts$/.tes
 const isSourceFile = (file) =>
 	file.startsWith("src/") && file.endsWith(".ts") && !isTestFile(file) && !file.includes("/__tests__/");
 
-const commits = git(["rev-list", "--reverse", "--no-merges", `${base}..${head}`])
+// A main-to-int sync PR brings in main's squash commits, which join each change's test and
+// implementation commits into one. Their order was already checked on the way into int.
+const mainRef = "origin/main";
+const hasMainRef = (() => {
+	try {
+		git(["rev-parse", "--verify", "--quiet", mainRef], { stdio: "ignore" });
+		return true;
+	} catch {
+		return false;
+	}
+})();
+
+const commits = git([
+	"rev-list",
+	"--reverse",
+	"--no-merges",
+	`${base}..${head}`,
+	...(hasMainRef ? [`^${mainRef}`] : []),
+])
 	.split("\n")
 	.filter(Boolean);
 

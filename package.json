@@ -1,6 +1,6 @@
 {
 	"name": "@windagency/codemap-gen-for-agents",
-	"version": "1.0.3",
+	"version": "1.1.0-rc.3",
 	"description": "Code-map generator for AI coding agents",
 	"type": "module",
 	"license": "MIT",
@@ -48,7 +48,9 @@
 		"release": "semantic-release"
 	},
 	"dependencies": {
+		"@bufbuild/protobuf": "^2.16.0",
 		"@modelcontextprotocol/sdk": "^1.30.0",
+		"@scip-code/scip": "^0.10.0",
 		"d3": "^7.9.0",
 		"graphology": "0.26.0",
 		"graphology-communities-louvain": "2.0.2",
@@ -60,7 +62,7 @@
 		"tree-sitter-python": "^0.25.0",
 		"tree-sitter-rust": "^0.24.0",
 		"typescript": "^7.0.2",
-		"zod": "^4.6.5"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

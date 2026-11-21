@@ -1,6 +1,6 @@
 # 0027: tree-sitter adopted for Go/Rust/Java, at deliberately lower fidelity than TS/JS
 
-[Back to README.md](../../README.md) • [Back to 0002-ts-compiler-api-over-tree-sitter.md](0002-ts-compiler-api-over-tree-sitter.md) • [Back to 0030-tree-sitter-python-support.md](0030-tree-sitter-python-support.md) • [Back to documentation/adr/README.md](README.md) • [Back to HLD.md](../HLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to GOVERNANCE.md](../../GOVERNANCE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
+[Back to README.md](../../README.md) • [Back to 0002-ts-compiler-api-over-tree-sitter.md](0002-ts-compiler-api-over-tree-sitter.md) • [Back to 0030-tree-sitter-python-support.md](0030-tree-sitter-python-support.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to documentation/adr/README.md](README.md) • [Back to HLD.md](../HLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to GOVERNANCE.md](../../GOVERNANCE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md)
 
 ## Status
 

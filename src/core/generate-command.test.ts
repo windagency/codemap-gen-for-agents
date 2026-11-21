@@ -98,6 +98,27 @@ describe("runGenerateCommand", () => {
 		expect(receivedOptions).toStrictEqual([expect.objectContaining({ force: true })]);
 	});
 
+	it("passes runIndexers through, with the config file's indexer timeout", () => {
+		fs.writeFileSync(path.join(rootDir, "codemap.config.json"), JSON.stringify({ indexerTimeoutSeconds: 30 }));
+		const receivedOptions: unknown[] = [];
+		const fakeGenerator = {
+			generateMap(_rootDir: string, options: unknown) {
+				receivedOptions.push(options);
+				return {
+					json: JSON.stringify({ nodes: [], edges: [] }),
+					html: "<html></html>",
+					skippedFiles: [],
+					nodeCount: 0,
+					edgeCount: 0,
+				};
+			},
+		};
+
+		runGenerateCommand({ rootDir, runIndexers: true }, fakeGenerator);
+
+		expect(receivedOptions).toStrictEqual([expect.objectContaining({ runIndexers: true, indexerTimeoutSeconds: 30 })]);
+	});
+
 	it("passes includeTests through to the orchestrator", () => {
 		const receivedOptions: { includeTests?: boolean }[] = [];
 		const fakeGenerator = {
@@ -116,6 +137,68 @@ describe("runGenerateCommand", () => {
 		runGenerateCommand({ rootDir, includeTests: true }, fakeGenerator);
 
 		expect(receivedOptions).toStrictEqual([expect.objectContaining({ includeTests: true })]);
+	});
+
+	it("passes scipIndexes through as absolute paths, an explicit input winning over the config file", () => {
+		fs.writeFileSync(
+			path.join(rootDir, "codemap.config.json"),
+			JSON.stringify({ scipIndexes: { python: "configured.scip" } }),
+		);
+		const receivedOptions: { scipIndexes?: Record<string, string> }[] = [];
+		const fakeGenerator = {
+			generateMap(_rootDir: string, options: { scipIndexes?: Record<string, string> }) {
+				receivedOptions.push(options);
+				return {
+					json: JSON.stringify({ nodes: [], edges: [] }),
+					html: "<html></html>",
+					skippedFiles: [],
+					nodeCount: 0,
+					edgeCount: 0,
+				};
+			},
+		};
+
+		runGenerateCommand({ rootDir }, fakeGenerator);
+		runGenerateCommand({ rootDir, scipIndexes: { python: "explicit.scip" } }, fakeGenerator);
+
+		expect(receivedOptions.map((options) => options.scipIndexes)).toStrictEqual([
+			{ python: path.join(rootDir, "configured.scip") },
+			{ python: path.join(rootDir, "explicit.scip") },
+		]);
+	});
+
+	it("logs each SCIP index fallback as its own warning", () => {
+		const fakeGenerator = {
+			generateMap() {
+				return {
+					json: JSON.stringify({ nodes: [], edges: [] }),
+					html: "<html></html>",
+					skippedFiles: [],
+					indexWarnings: [
+						{ reason: "index-stale" as const, file: "app/service.py" },
+						{ reason: "index-unreadable" as const, file: "/repo/index.scip", detail: "cannot read" },
+					],
+					nodeCount: 0,
+					edgeCount: 0,
+				};
+			},
+		};
+		const { logger, calls } = fakeLogger();
+
+		runGenerateCommand({ rootDir }, fakeGenerator, logger);
+
+		expect(calls).toStrictEqual([
+			[
+				"warn",
+				"scip index fallback: index-stale",
+				{ file: "app/service.py", warning: "SCIP index is stale, used tree-sitter resolution: app/service.py" },
+			],
+			[
+				"warn",
+				"scip index fallback: index-unreadable",
+				{ file: "/repo/index.scip", warning: "Unreadable SCIP index /repo/index.scip: cannot read" },
+			],
+		]);
 	});
 
 	it("logs each generateMap warning instead of silently discarding it", () => {

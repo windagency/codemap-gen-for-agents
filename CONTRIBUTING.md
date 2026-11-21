@@ -1,6 +1,6 @@
 # Contributing
 
-[Back to README.md](README.md) • [Back to AGENTS.md](AGENTS.md) • [Back to 14-observability.md](CODING_RULES/14-observability.md) • [Back to 0031-zod-confined-to-schema-modules.md](documentation/adr/0031-zod-confined-to-schema-modules.md) • [Back to TESTING.md](documentation/TESTING.md) • [Back to GOVERNANCE.md](GOVERNANCE.md) • [Back to NEXT_STEPS.md](NEXT_STEPS.md)
+[Back to README.md](README.md) • [Back to AGENTS.md](AGENTS.md) • [Back to 14-observability.md](CODING_RULES/14-observability.md) • [Back to 0031-zod-confined-to-schema-modules.md](documentation/adr/0031-zod-confined-to-schema-modules.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to TESTING.md](documentation/TESTING.md) • [Back to GOVERNANCE.md](GOVERNANCE.md) • [Back to NEXT_STEPS.md](NEXT_STEPS.md)
 
 This repository is built and maintained by AI agents and human engineers working side by side. Every change, whoever writes it, is held to the same bar.
 

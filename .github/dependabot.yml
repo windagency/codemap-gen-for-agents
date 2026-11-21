@@ -26,6 +26,11 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     target-branch: int
+    groups:
+      # init, analyze and upload-sarif must run the same version: CodeQL fails a run whose steps differ (#59, #63).
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     schedule:
       interval: weekly
     commit-message:

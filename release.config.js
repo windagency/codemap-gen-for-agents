@@ -11,6 +11,9 @@ const changelogTitle = (firstRelease === -1 ? changelog : changelog.slice(0, fir
 export default {
 	branches: [
 		"main",
+		// A first group tests each change set before it reaches main: every release-worthy merge into int is
+		// staged as `<next version>-rc.<n>` on the `rc` dist-tag, never `latest`.
+		{ name: "int", prerelease: "rc", channel: "rc" },
 		{
 			name: "release/+([0-9])?(.{+([0-9]),x}).x",
 			// biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release's own lodash template, evaluated by semantic-release
@@ -92,17 +95,33 @@ export default {
 				tarballDir: "release-tarball",
 			},
 		],
-		// Stages the tarball packed above. The npm CLI authenticates through OIDC (Trusted Publishing); a
-		// maintenance-branch release goes to its own channel's dist-tag, as npm requires for non-latest versions.
+		// Pins the Claude Code plugin to the version being released, then stages the tarball packed above. The
+		// npm CLI authenticates through OIDC (Trusted Publishing); a maintenance-branch release goes to its own
+		// channel's dist-tag, as npm requires for non-latest versions.
 		[
 			"@semantic-release/exec",
 			{
+				// biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release's own lodash template, rendered by @semantic-release/exec
+				prepareCmd: "node scripts/bump-plugin-version.mjs ${nextRelease.version}",
 				publishCmd:
 					// biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release's own lodash template, rendered by @semantic-release/exec
 					'npm stage publish ./release-tarball/*-${nextRelease.version}.tgz --provenance --tag ${nextRelease.channel || "latest"}',
 			},
 		],
-		"@semantic-release/git",
+		// The plugin's two files join the plugin's default assets, so the release commit carries the new pin.
+		[
+			"@semantic-release/git",
+			{
+				assets: [
+					"CHANGELOG.md",
+					"package.json",
+					"package-lock.json",
+					"npm-shrinkwrap.json",
+					"plugins/codemap/.claude-plugin/plugin.json",
+					"plugins/codemap/.mcp.json",
+				],
+			},
+		],
 		[
 			"@semantic-release/github",
 			{

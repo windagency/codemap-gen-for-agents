@@ -54,7 +54,7 @@ describe("pipeline dependency direction", () => {
 	it("core/ never imports an extraction/graph-building/clustering/output/discovery implementation subfolder", () => {
 		const violations = findBoundaryViolations(
 			/^src\/core\//,
-			/^src\/(extraction\/(ts-compiler-api|tree-sitter-go|tree-sitter-rust|tree-sitter-java|tree-sitter-python)|graph-building\/default|clustering\/louvain|output\/json|output\/html|discovery\/filesystem)\//,
+			/^src\/(extraction\/(ts-compiler-api|tree-sitter-go|tree-sitter-rust|tree-sitter-java|tree-sitter-python|scip)|graph-building\/default|clustering\/louvain|output\/json|output\/html|discovery\/filesystem)\//,
 		);
 
 		expect(violations).toStrictEqual([]);
@@ -162,6 +162,24 @@ describe("pipeline dependency direction", () => {
 		const violations = findBoundaryViolations(
 			/^src\/(?!extraction\/tree-sitter-(common|go|rust|java|python)\/|extraction\/tree-sitter-grammars\.d\.ts$)/,
 			/^tree-sitter(-go|-rust|-java|-python)?$/,
+		);
+
+		expect(violations).toStrictEqual([]);
+	});
+
+	it("@scip-code/scip and @bufbuild/protobuf are only ever imported through their own owned adapter (CODING_RULES/04-architecture.md, documentation/adr/0056)", () => {
+		const violations = findBoundaryViolations(
+			/^src\/(?!extraction\/scip\/scip-index-reader\.ts$)/,
+			/^(@scip-code\/scip|@bufbuild\/protobuf)(\/.*)?$/,
+		);
+
+		expect(violations).toStrictEqual([]);
+	});
+
+	it("node:child_process is only ever imported through the indexer process adapter (documentation/adr/0056)", () => {
+		const violations = findBoundaryViolations(
+			/^src\/(?!extraction\/scip\/indexer-process\.ts$)/,
+			/^(node:)?child_process$/,
 		);
 
 		expect(violations).toStrictEqual([]);

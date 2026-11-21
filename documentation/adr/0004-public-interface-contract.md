@@ -1,6 +1,6 @@
 # 0004: Public interface contract - CLI, MCP tools, config discovery, and the Skill
 
-[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md)
+[Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md)
 
 ## Status
 

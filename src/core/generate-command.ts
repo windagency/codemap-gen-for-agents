@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { loadConfig, type ResolvedCodemapConfig, resolveAbsoluteOutDir } from "src/core/config";
+import {
+	loadConfig,
+	type ResolvedCodemapConfig,
+	resolveAbsoluteOutDir,
+	resolveScipIndexes,
+	type ScipIndexPaths,
+} from "src/core/config";
 import type { CodemapGenerator } from "src/core/generate-map";
+import { formatIndexWarning, type IndexWarning } from "src/core/index-warning";
 import { createConsoleLogger, type Logger } from "src/core/observability/logger";
 import { formatSkippedFile, type SkippedFile } from "src/core/skipped-file";
 
@@ -37,6 +44,10 @@ export interface GenerateCommandInput {
 	outDir?: string;
 	force?: boolean;
 	includeTests?: boolean;
+	// Language -> SCIP index path, relative to `rootDir` (documentation/adr/0056).
+	scipIndexes?: ScipIndexPaths;
+	// Runs each language's SCIP indexer, and so the target repo's build tooling (decision 1).
+	runIndexers?: boolean;
 }
 
 // Never `nodes`/`edges` - a large graph must never cross a tool-call response.
@@ -62,6 +73,16 @@ export function logSkippedFiles(logger: Logger, skippedFiles: SkippedFile[]): vo
 	}
 }
 
+// One event per SCIP fallback, named by reason, alongside `logSkippedFiles`'s own events.
+export function logIndexWarnings(logger: Logger, indexWarnings: IndexWarning[] = []): void {
+	for (const indexWarning of indexWarnings) {
+		logger.warn(`scip index fallback: ${indexWarning.reason}`, {
+			file: indexWarning.file,
+			warning: formatIndexWarning(indexWarning),
+		});
+	}
+}
+
 export function runGenerateCommand(
 	input: GenerateCommandInput,
 	generator: CodemapGenerator,
@@ -74,11 +95,15 @@ export function runGenerateCommand(
 		exclude: config.exclude,
 		force: input.force,
 		includeTests: input.includeTests,
+		scipIndexes: resolveScipIndexes(rootDir, input.scipIndexes, config),
+		runIndexers: input.runIndexers,
+		indexerTimeoutSeconds: config.indexerTimeoutSeconds,
 	});
 
 	// Every adapter (CLI/MCP/Skill) goes through this one function, so logging here reaches all
 	// three.
 	logSkippedFiles(logger, result.skippedFiles);
+	logIndexWarnings(logger, result.indexWarnings);
 
 	fs.mkdirSync(outDir, { recursive: true });
 	const jsonPath = path.join(outDir, JSON_FILE_NAME);

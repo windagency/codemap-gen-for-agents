@@ -29,7 +29,15 @@ export interface ExtractedSymbols {
 	symbols: RawSymbol[];
 	imports: RawImport[];
 	calls: RawCall[];
+	// Set when a SCIP index was supplied for this file's language but could not be used for this
+	// file, so its calls kept tree-sitter's candidates (documentation/adr/0056). Stored here, not
+	// recomputed, so a cached file keeps reporting its fallback. Never read by `GraphBuilder`.
+	indexFallback?: IndexFallbackReason;
 }
+
+// "index-stale": the file changed since it was indexed. "index-uncovered": the index has no
+// document for the file.
+export type IndexFallbackReason = "index-stale" | "index-uncovered";
 
 export interface RawSymbol {
 	localId: string; // name with a #2/#3 suffix already applied - becomes the Symbol id's fragment after `${filePath}#`

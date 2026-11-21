@@ -14,6 +14,8 @@ describe("SKILL_HELP", () => {
 		"--config",
 		"--force",
 		"--include-tests",
+		"--scip-index",
+		"--run-indexers",
 		"--path",
 		"--symbol-kind",
 		"--search",

@@ -1,7 +1,8 @@
 import type { ModuleSummary } from "src/clustering/module-naming";
+import { resolveScipIndexes, type ScipIndexPaths } from "src/core/config";
 import type { GraphFilters } from "src/core/filter-graph";
 import { filterGraph } from "src/core/filter-graph";
-import { logSkippedFiles, resolveCommandContext } from "src/core/generate-command";
+import { logIndexWarnings, logSkippedFiles, resolveCommandContext } from "src/core/generate-command";
 import type { CodemapGenerator } from "src/core/generate-map";
 import { createConsoleLogger, type Logger } from "src/core/observability/logger";
 import type { ClusteredGraph } from "src/core/types";
@@ -12,6 +13,7 @@ export interface ReadCommandInput extends GraphFilters {
 	configPath?: string;
 	outDir?: string;
 	includeTests?: boolean;
+	scipIndexes?: ScipIndexPaths;
 }
 
 // The shape of `generateMap`'s `json` output (`src/output/json/build-map-json.ts`'s `MapJson`),
@@ -45,11 +47,15 @@ export function runReadCommand(
 		exclude: config.exclude,
 		force: false,
 		includeTests: input.includeTests,
+		scipIndexes: resolveScipIndexes(rootDir, input.scipIndexes, config),
+		// Never runs the target repo's build tooling as a side effect of a read (documentation/adr/0056).
+		runIndexers: false,
 	});
 
 	// Same pipeline, same skip-and-warn policy as `runGenerateCommand` - surfaced the same way
 	// for consistency between the two commands.
 	logSkippedFiles(logger, result.skippedFiles);
+	logIndexWarnings(logger, result.indexWarnings);
 
 	const mapJson = JSON.parse(result.json) as GeneratedMapJson;
 

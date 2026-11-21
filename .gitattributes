@@ -10,6 +10,7 @@
 *.mov       binary
 *.mp4       binary
 *.webm      binary
+*.scip      binary
 
 #
 # Exclude files from exporting

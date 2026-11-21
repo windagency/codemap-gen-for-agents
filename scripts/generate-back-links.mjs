@@ -14,10 +14,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BACK_LINK_PREFIX = "[Back to ";
 const CHECK = process.argv.includes("--check");
 
-// SKILL.md is copied into dist/ and installed outside this repo, where relative links break.
-// THIRD_PARTY_LICENSES.md is generated: its back-link line lives in
+// SKILL.md is copied into dist/ and installed outside this repo, where relative links break, and so is
+// the Claude Code plugin's README.md. THIRD_PARTY_LICENSES.md is generated: its back-link line lives in
 // scripts/generate-third-party-licenses.mjs, so this script only prints the line to paste there.
-const PRINT_ONLY = new Set(["src/integration/skill/SKILL.md", "THIRD_PARTY_LICENSES.md"]);
+const PRINT_ONLY = new Set(["src/integration/skill/SKILL.md", "plugins/codemap/README.md", "THIRD_PARTY_LICENSES.md"]);
 
 // The root of the documentation tree: still linked back to, but never given a back-link line.
 const ROOT_DOC = "README.md";

@@ -59,6 +59,7 @@ const extractedSymbolsSchema = z.object({
 	symbols: z.array(rawSymbolSchema),
 	imports: z.array(rawImportSchema),
 	calls: z.array(rawCallSchema),
+	indexFallback: z.enum(["index-stale", "index-uncovered"]).optional(),
 }) satisfies z.ZodType<ExtractedSymbols>;
 
 // `CONTRIBUTING.md`'s "all external input validated with Zod before use" - `cache.json` is

@@ -10,17 +10,29 @@ import {
 	loadCache,
 	saveCache,
 } from "src/core/cache/extraction-cache";
+import { DEFAULT_INDEXER_TIMEOUT_SECONDS, type ScipIndexPaths } from "src/core/config";
 import { GENERATOR_VERSION } from "src/core/generator-version";
-import { DEPENDENCY_FILE_NAMES, extensionOf, languageOfExtension, parsePackageDir } from "src/core/languages";
+import { formatIndexWarning, type IndexWarning } from "src/core/index-warning";
+import {
+	DEPENDENCY_FILE_NAMES,
+	extensionOf,
+	languageOfExtension,
+	parsePackageDir,
+	SCIP_LANGUAGES,
+	type ScipLanguage,
+} from "src/core/languages";
 import { createConsoleLogger, currentLogContext, type Logger, withLogContext } from "src/core/observability/logger";
 import { formatSkippedFile, type SkippedFile } from "src/core/skipped-file";
 import type { ClusteredGraph, DiscoveredStructure, ExtractedSymbols } from "src/core/types";
 import type { Discovery } from "src/discovery/discovery";
 import type { Parser } from "src/extraction/parser";
+import type { IndexerResult, ScipIndexer } from "src/extraction/scip-indexer";
+import type { IndexResolver, IndexSource } from "src/extraction/scip-resolver";
 import type { GraphBuilder } from "src/graph-building/graph-builder";
 import type { Transformer } from "src/output/transformer";
 
 const CACHE_FILE_NAME = "cache.json";
+const DEFAULT_SCIP_INDEX_FILE_NAME = "index.scip";
 
 function toPosixRelative(rootDir: string, absolutePath: string): string {
 	return path.relative(rootDir, absolutePath).split(path.sep).join("/");
@@ -55,6 +67,7 @@ function computeCurrentEpoch(
 	structure: DiscoveredStructure,
 	exclude: string[],
 	includeTests: boolean,
+	indexSources: IndexSource[],
 ): string {
 	return computeEpoch({
 		generatorVersion: GENERATOR_VERSION,
@@ -62,7 +75,87 @@ function computeCurrentEpoch(
 		excludePatterns: exclude,
 		includeTests,
 		dependencyFiles: readDependencyFiles(rootDir, structure),
+		scipIndexes: hashIndexSources(indexSources),
 	});
+}
+
+// documentation/adr/0056 decision 2: an explicit path per language, else `<rootDir>/index.scip`
+// when that file exists and holds documents of that language. An explicit path that does not
+// exist is still a source, so the run warns about it instead of silently ignoring it. So is an
+// unreadable default, for every language, so the run warns about it once. `covered` leaves that
+// unreadable default out: it holds nothing, so it must not stop an indexer from running.
+function resolveIndexSources(
+	rootDir: string,
+	scipIndexes: ScipIndexPaths,
+	indexResolver: IndexResolver,
+): { sources: IndexSource[]; covered: ScipLanguage[] } {
+	const defaultPath = path.join(rootDir, DEFAULT_SCIP_INDEX_FILE_NAME);
+	const needsDefault = SCIP_LANGUAGES.some((language) => scipIndexes[language] === undefined);
+	const readable = needsDefault && fs.existsSync(defaultPath) ? indexResolver.languagesIn(defaultPath) : [];
+	const defaultLanguages: readonly ScipLanguage[] = readable ?? SCIP_LANGUAGES;
+	const sources = SCIP_LANGUAGES.flatMap((language): IndexSource[] => {
+		const indexPath = scipIndexes[language] ?? (defaultLanguages.includes(language) ? defaultPath : undefined);
+		return indexPath === undefined ? [] : [{ language, indexPath: path.resolve(indexPath) }];
+	});
+	const covered = SCIP_LANGUAGES.filter(
+		(language) => scipIndexes[language] !== undefined || (readable ?? []).includes(language),
+	);
+	return { sources, covered };
+}
+
+// Decision 5: an index's content is an epoch input, so a regenerated index re-extracts every file
+// instead of serving refinements cached against the old one. An unreadable index hashes as "".
+function hashIndexSources(indexSources: IndexSource[]): Record<string, string> {
+	return Object.fromEntries(
+		indexSources.map(({ language, indexPath }) => {
+			let contentHash = "";
+			try {
+				contentHash = crypto.createHash("sha256").update(fs.readFileSync(indexPath)).digest("hex");
+			} catch {
+				// Reported by the resolver as an unreadable index.
+			}
+			return [`${language}:${indexPath}`, contentHash];
+		}),
+	);
+}
+
+// Repo-relative when the path sits under the canonical root or the root as the caller gave it
+// (the two differ behind a symlink); otherwise left absolute.
+function displayPath(absolutePath: string, roots: string[]): string {
+	const root = roots.find((candidate) => absolutePath.startsWith(`${candidate}${path.sep}`));
+	return root === undefined ? absolutePath : toPosixRelative(root, absolutePath);
+}
+
+// A file's stored fallback reason, cached or fresh, each index the resolver could not read, and
+// each indexer run that produced no index, then each index whose pre-index check failed.
+function collectIndexWarnings(
+	roots: string[],
+	symbols: ExtractedSymbols[],
+	unreadableIndexes: { indexPath: string; reason: string }[],
+	{ failures, checkFailures }: Pick<IndexerResult, "failures" | "checkFailures">,
+): IndexWarning[] {
+	return [
+		...symbols.flatMap((extracted): IndexWarning[] =>
+			extracted.indexFallback ? [{ reason: extracted.indexFallback, file: extracted.filePath }] : [],
+		),
+		...unreadableIndexes.map(({ indexPath, reason }) => ({
+			reason: "index-unreadable" as const,
+			file: displayPath(indexPath, roots),
+			detail: reason,
+		})),
+		...failures.map(({ packageId, indexer, reason }) => ({
+			reason: "indexer-failed" as const,
+			file: packageId,
+			detail: reason,
+			indexer,
+		})),
+		...checkFailures.map(({ packageId, check, reason }) => ({
+			reason: "indexer-check-failed" as const,
+			file: packageId,
+			detail: reason,
+			indexer: check,
+		})),
+	];
 }
 
 // `force` bypasses the cache entirely (an empty epoch never matches, so every file comes back
@@ -270,6 +363,9 @@ export interface GeneratedMap {
 	// Discovery-flagged manifest-less one. The same list reaches `json`'s top-level `warnings`
 	// field as formatted lines (documentation/adr/0029); commands log it from here.
 	skippedFiles: SkippedFile[];
+	// Every SCIP index fallback (documentation/adr/0056), after `skippedFiles` in `warnings`. Absent
+	// when there are none.
+	indexWarnings?: IndexWarning[];
 	// Computed straight from `clusteredGraph`, not by re-parsing `json`.
 	nodeCount: number;
 	edgeCount: number;
@@ -280,6 +376,11 @@ export interface GenerateMapOptions {
 	outDir: string;
 	force?: boolean;
 	includeTests?: boolean;
+	// Language -> absolute SCIP index path (documentation/adr/0056).
+	scipIndexes?: ScipIndexPaths;
+	// Runs each language's SCIP indexer for every language with no supplied index (decision 1).
+	runIndexers?: boolean;
+	indexerTimeoutSeconds?: number;
 }
 
 export interface CodemapGenerator {
@@ -293,13 +394,26 @@ export interface CodemapGeneratorDependencies {
 	moduleDetector: ModuleDetector;
 	jsonTransformer: Transformer;
 	htmlTransformer: Transformer;
+	// Absent means SCIP indexes are ignored.
+	indexResolver?: IndexResolver;
+	// Absent means `runIndexers` is ignored.
+	scipIndexer?: ScipIndexer;
 }
 
 export function createCodemapGenerator(
 	dependencies: CodemapGeneratorDependencies,
 	logger: Logger = createConsoleLogger(),
 ): CodemapGenerator {
-	const { discovery, parser, graphBuilder, moduleDetector, jsonTransformer, htmlTransformer } = dependencies;
+	const {
+		discovery,
+		parser,
+		graphBuilder,
+		moduleDetector,
+		jsonTransformer,
+		htmlTransformer,
+		indexResolver,
+		scipIndexer,
+	} = dependencies;
 
 	// Times each pipeline stage and remembers which one is running, so a failure can name it.
 	function createStageTimer() {
@@ -311,7 +425,8 @@ export function createCodemapGenerator(
 				current = stage;
 				const stageStartedAt = performance.now();
 				const result = work();
-				durationsMs[stage] = Math.round(performance.now() - stageStartedAt);
+				// Accumulates, so a stage split around another one still reports its whole time.
+				durationsMs[stage] = (durationsMs[stage] ?? 0) + Math.round(performance.now() - stageStartedAt);
 				return result;
 			},
 			currentStage: () => current,
@@ -332,18 +447,44 @@ export function createCodemapGenerator(
 		// macOS's `/var` -> `/private/var` tmpdir - to compute a file's canonical identity), so every
 		// downstream `path.relative(rootDir, …)` needs the same canonical form or produces garbage.
 		const rootDir = fs.realpathSync(inputRootDir);
-		const { exclude, outDir, force = false, includeTests = false } = options;
+		const {
+			exclude,
+			outDir,
+			force = false,
+			includeTests = false,
+			scipIndexes = {},
+			runIndexers = false,
+			indexerTimeoutSeconds = DEFAULT_INDEXER_TIMEOUT_SECONDS,
+		} = options;
 		const cachePath = path.join(outDir, CACHE_FILE_NAME);
+		const supplied = indexResolver
+			? resolveIndexSources(rootDir, scipIndexes, indexResolver)
+			: { sources: [], covered: [] };
 
-		const { structure, files, currentEpoch, cacheDiff } = timer.run("discover", () => {
-			const structure = discovery.discover(rootDir, exclude, includeTests);
+		const structure = timer.run("discover", () => discovery.discover(rootDir, exclude, includeTests));
+		// Decision 1 and 2: only for a language with no supplied index, and never from `read`.
+		const indexerResult: IndexerResult =
+			runIndexers && indexResolver && scipIndexer
+				? timer.run("index", () =>
+						scipIndexer.index({
+							rootDir,
+							outDir,
+							structure,
+							languages: SCIP_LANGUAGES.filter((language) => !supplied.covered.includes(language)),
+							timeoutSeconds: indexerTimeoutSeconds,
+						}),
+					)
+				: { sources: [], failures: [], checkFailures: [] };
+		const indexSources = [...supplied.sources, ...indexerResult.sources];
+
+		const { files, currentEpoch, cacheDiff } = timer.run("discover", () => {
 			// Discovery's ids are repo-relative (they double as node ids); the cache and Parser need
 			// real filesystem paths, resolved here at the orchestrator boundary. `rewriteSymbolPaths`
 			// converts Parser's output back before `GraphBuilder` sees it.
 			const files = structure.programFiles.map((relativePath) => path.join(rootDir, relativePath));
-			const currentEpoch = computeCurrentEpoch(rootDir, structure, exclude, includeTests);
+			const currentEpoch = computeCurrentEpoch(rootDir, structure, exclude, includeTests, indexSources);
 			const cacheDiff = diffAgainstCache(cachePath, files, currentEpoch, force);
-			return { structure, files, currentEpoch, cacheDiff };
+			return { files, currentEpoch, cacheDiff };
 		});
 		logger.info("cache diff computed", {
 			totalFiles: files.length,
@@ -351,23 +492,33 @@ export function createCodemapGenerator(
 			cachedFiles: Object.keys(cacheDiff.cached).length,
 		});
 
-		const { symbolsByFile, symbolsForGraph, structureForGraph, unparseable } = timer.run("parse", () => {
-			const freshSymbols = parser.parse(rootDir, files, cacheDiff.extractFiles);
-			const symbolsByFile = mergeSymbolsByFile(cacheDiff.cached, freshSymbols);
-			const { symbols, skippedRelativePaths } = rewriteSymbolPaths(rootDir, structure, files, symbolsByFile);
-			const structureForGraph = buildStructureForGraph(structure, skippedRelativePaths);
-			const symbolsWithValidImports = rewriteDanglingFileImports(symbols, new Set(structureForGraph.programFiles));
-			const symbolsForGraph = stripHiddenTestItems(symbolsWithValidImports, includeTests);
-			logger.info("hidden test items stripped", {
-				hiddenSymbols: countSymbols(symbolsWithValidImports) - countSymbols(symbolsForGraph),
-			});
-			return {
-				symbolsByFile,
-				symbolsForGraph,
-				structureForGraph,
-				unparseable: skippedRelativePaths,
-			};
-		});
+		const { symbolsByFile, symbolsForGraph, structureForGraph, unparseable, unreadableIndexes } = timer.run(
+			"parse",
+			() => {
+				const parsedSymbols = parser.parse(rootDir, files, cacheDiff.extractFiles);
+				const resolution = indexResolver?.resolve(
+					indexSources,
+					parsedSymbols,
+					mergeSymbolsByFile(cacheDiff.cached, parsedSymbols),
+				) ?? { symbols: parsedSymbols, unreadableIndexes: [] };
+				const freshSymbols = resolution.symbols;
+				const symbolsByFile = mergeSymbolsByFile(cacheDiff.cached, freshSymbols);
+				const { symbols, skippedRelativePaths } = rewriteSymbolPaths(rootDir, structure, files, symbolsByFile);
+				const structureForGraph = buildStructureForGraph(structure, skippedRelativePaths);
+				const symbolsWithValidImports = rewriteDanglingFileImports(symbols, new Set(structureForGraph.programFiles));
+				const symbolsForGraph = stripHiddenTestItems(symbolsWithValidImports, includeTests);
+				logger.info("hidden test items stripped", {
+					hiddenSymbols: countSymbols(symbolsWithValidImports) - countSymbols(symbolsForGraph),
+				});
+				return {
+					symbolsByFile,
+					symbolsForGraph,
+					structureForGraph,
+					unparseable: skippedRelativePaths,
+					unreadableIndexes: resolution.unreadableIndexes,
+				};
+			},
+		);
 
 		const rawGraph = timer.run("build", () => graphBuilder.build(symbolsForGraph, structureForGraph));
 		const clusteredGraph = timer.run("cluster", () => moduleDetector.detect(rawGraph));
@@ -388,10 +539,16 @@ export function createCodemapGenerator(
 			})),
 			...unparseable.map((file) => ({ file, reason: "unparseable" as const })),
 		];
+		const indexWarnings = collectIndexWarnings(
+			[rootDir, path.resolve(inputRootDir)],
+			symbolsForGraph,
+			unreadableIndexes,
+			indexerResult,
+		);
 
 		const { json, html } = timer.run("transform", () => ({
 			json: jsonTransformer.transform(clusteredGraph, {
-				warnings: skippedFiles.map(formatSkippedFile),
+				warnings: [...skippedFiles.map(formatSkippedFile), ...indexWarnings.map(formatIndexWarning)],
 			}),
 			html: htmlTransformer.transform(clusteredGraph),
 		}));
@@ -399,7 +556,9 @@ export function createCodemapGenerator(
 		logger.info("generate complete", {
 			nodeCount: clusteredGraph.nodes.length,
 			edgeCount: clusteredGraph.edges.length,
-			warningCount: skippedFiles.length,
+			warningCount: skippedFiles.length + indexWarnings.length,
+			indexSources: indexSources.length,
+			indexFallbacks: indexWarnings.length,
 			filesByLanguage: countByLanguage(structure.programFiles),
 			skippedByLanguage: countByLanguage(skippedFiles.map(({ file }) => file)),
 			durationsMs: timer.summary(),
@@ -409,6 +568,7 @@ export function createCodemapGenerator(
 			json,
 			html,
 			skippedFiles,
+			...(indexWarnings.length > 0 ? { indexWarnings } : {}),
 			nodeCount: clusteredGraph.nodes.length,
 			edgeCount: clusteredGraph.edges.length,
 		};
