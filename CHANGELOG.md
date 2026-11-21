@@ -18,6 +18,13 @@ Versioned entries below this point are written by `semantic-release` (`@semantic
 
 ### Removed
 
+## [1.1.0-rc.3](https://github.com/windagency/codemap-gen-for-agents/compare/v1.1.0-rc.2...v1.1.0-rc.3) (2026-11-21)
+
+### Features
+
+* **plugin:** add the plugin listing icon ([6b3ff93](https://github.com/windagency/codemap-gen-for-agents/commit/6b3ff9379cb3ddd1bbfb3e879ec06c62be569a40))
+* **plugin:** package the MCP server as a Claude Code plugin ([7e1e222](https://github.com/windagency/codemap-gen-for-agents/commit/7e1e222ec7473dc106dde8fd0baf8348926bde58))
+
 ## [1.1.0-rc.2](https://github.com/windagency/codemap-gen-for-agents/compare/v1.1.0-rc.1...v1.1.0-rc.2) (2026-10-23)
 
 ### Bug Fixes

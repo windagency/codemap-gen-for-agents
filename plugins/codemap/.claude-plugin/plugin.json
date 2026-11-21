@@ -1,6 +1,6 @@
 {
 	"name": "codemap",
-	"version": "1.0.3",
+	"version": "1.1.0-rc.3",
 	"description": "Structural code map for AI coding agents: Package/Directory/File/Symbol graph with detected Module domains and static import/call edges, served over MCP.",
 	"author": {
 		"name": "Damien TIVELET",
