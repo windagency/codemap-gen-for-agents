@@ -1,0 +1,13 @@
+{
+	"name": "codemap",
+	"version": "1.0.3",
+	"description": "Structural code map for AI coding agents: Package/Directory/File/Symbol graph with detected Module domains and static import/call edges, served over MCP.",
+	"author": {
+		"name": "Damien TIVELET",
+		"email": "damien@wind-agency.com"
+	},
+	"homepage": "https://github.com/windagency/codemap-gen-for-agents#readme",
+	"repository": "https://github.com/windagency/codemap-gen-for-agents",
+	"license": "MIT",
+	"keywords": ["code-map", "monorepo", "static-analysis", "call-graph", "import-graph"]
+}

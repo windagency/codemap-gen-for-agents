@@ -1,6 +1,6 @@
 # 0056: Go/Rust/Java/Python resolution comes from a SCIP index, tree-sitter stays the fallback
 
-[Back to documentation/adr/README.md](README.md) • [Back to FLOWS.md](../FLOWS.md) • [Back to LLD.md](../LLD.md) • [Back to TESTING.md](../TESTING.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md) • [Back to SKILL.md](../../src/integration/skill/SKILL.md)
+[Back to documentation/adr/README.md](README.md) • [Back to FLOWS.md](../FLOWS.md) • [Back to LLD.md](../LLD.md) • [Back to TESTING.md](../TESTING.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to NEXT_STEPS.md](../../NEXT_STEPS.md) • [Back to src/integration/skill/SKILL.md](../../src/integration/skill/SKILL.md)
 
 ## Status
 

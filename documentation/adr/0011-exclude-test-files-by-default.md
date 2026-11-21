@@ -1,6 +1,6 @@
 # 0011: Test files are excluded from the codemap by default
 
-[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to SKILL.md](../../src/integration/skill/SKILL.md)
+[Back to documentation/adr/README.md](README.md) • [Back to LLD.md](../LLD.md) • [Back to USER_GUIDE.md](../USER_GUIDE.md) • [Back to src/integration/skill/SKILL.md](../../src/integration/skill/SKILL.md)
 
 ## Status
 
