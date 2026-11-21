@@ -44,6 +44,12 @@ npm only accepts staged publishes for this package: its Trusted Publisher (repos
 
 A staged version is not installable until a maintainer approves it with 2FA, either `npm stage approve <stage-id>` or the package's Staged Packages tab on npmjs.com. The stage ID is a UUID, not `package@version`: the Publish run's log prints it (`staged with id <uuid>`), and `npm stage list @windagency/codemap-gen-for-agents` lists pending ones. `npm stage view <stage-id>` shows a staged version before approving; `npm stage reject <stage-id>` drops it. The GitHub Release and the `v<version>` tag already exist by then, so approve (or reject) promptly: until approval, npm `latest` still points at the previous version. Staging is what keeps a compromised dependency or Action in the Publish job from shipping a release on its own - it can stage, never publish.
 
+## Claude Code plugin pin
+
+The Claude Code plugin in `plugins/codemap/` launches the server through `npx` pinned to an exact package version, since Anthropic's plugin directory blocks unpinned launchers. `@semantic-release/exec`'s `prepareCmd` runs `scripts/bump-plugin-version.mjs <version>`, which writes the release version into `version` in `plugin.json` and the pin in `.mcp.json`; `@semantic-release/git` lists both files as assets, so the release commit carries them. A release candidate pins its rc version on `int`, and the release on `main` re-pins the plain one.
+
+The pin lands in the release commit before the version is approved on npm, so until approval a fresh plugin install points at a version npm won't serve yet. Approve promptly, as above. A rejected stage leaves the pin on a version that never ships: pin the previous one by hand with `node scripts/bump-plugin-version.mjs <version>` in a `fix-` branch.
+
 ## npm provenance
 
 `package.json`'s `publishConfig.provenance: true` and `npm stage publish --provenance`, together with `publish.yml`'s `id-token: write` permission, attach a provenance attestation to the published package - a verifiable, tamper-evident link from the npm tarball back to this exact GitHub Actions run and commit. This requires the repository to be public; provenance cannot be generated from a private repo.
