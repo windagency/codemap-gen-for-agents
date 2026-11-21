@@ -1,6 +1,6 @@
 # Next steps
 
-[Back to README.md](README.md) • [Back to AGENTS.md](AGENTS.md) • [Back to 0027-tree-sitter-multi-language-extraction.md](documentation/adr/0027-tree-sitter-multi-language-extraction.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to HLD.md](documentation/HLD.md)
+[Back to README.md](README.md) • [Back to AGENTS.md](AGENTS.md) • [Back to 0027-tree-sitter-multi-language-extraction.md](documentation/adr/0027-tree-sitter-multi-language-extraction.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to DEPLOYMENT.md](documentation/DEPLOYMENT.md) • [Back to HLD.md](documentation/HLD.md)
 
 Source of truth for this project's open, decided-but-not-built items. Every other doc that used to restate this list (`documentation/HLD.md`'s Non-goals, `documentation/adr/0027-tree-sitter-multi-language-extraction.md`'s Consequences) points here instead of carrying its own copy - check an item here, don't re-describe it there.
 
@@ -23,6 +23,9 @@ Each item says what's decided, what isn't, and which ADR to read before starting
 
 - [x] **Load each tree-sitter grammar only when its language is present** - `src/extraction/parser-factory.ts` imports every grammar up front, so one broken native binding (`tree-sitter-java` on Linux arm64 without the build toolchain) fails runs that contain no Java at all. Loading a grammar only when its language is detected would confine that failure to repositories that use it.
   Found while documenting the Linux arm64 install steps. No ADR needed unless lazy loading changes the `Parser` seam's sync interface.
+
+- [ ] **List the Claude Code plugin in Anthropic's plugin directory** - `plugins/codemap/` installs today from this repo's own marketplace (`/plugin install codemap --marketplace windagency/codemap-gen-for-agents`). The directory's Validate step blocks it: it accepts MCP servers that run on the user's computer only from Verified organizations, and the windagency organization isn't one yet. Verified status is requested from the developer portal (Submissions, Help and appeals, Request verified).
+  Decided: wait for Verified rather than ship a skill-only plugin without the MCP server. Not decided: how to bundle the server once Verified. The portal expects the server file inside the plugin, run with `node ${CLAUDE_PLUGIN_ROOT}/...` and plain arguments, not the pinned `npx` launcher `.mcp.json` uses now. That means shipping `dist/` and its dependencies in the plugin folder, including the per-platform native tree-sitter grammars, against the directory's 512-file and compiled-binary review holds. The same Validate run also warned that the name `codemap` resembles another plugin's; renaming before a first submission costs only a new draft.
 
 ## Rejected (not open - listed so they aren't re-proposed)
 
