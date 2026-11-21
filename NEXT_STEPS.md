@@ -1,6 +1,6 @@
 # Next steps
 
-[Back to README.md](README.md) • [Back to AGENTS.md](AGENTS.md) • [Back to 0027-tree-sitter-multi-language-extraction.md](documentation/adr/0027-tree-sitter-multi-language-extraction.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to HLD.md](documentation/HLD.md)
+[Back to README.md](README.md) • [Back to AGENTS.md](AGENTS.md) • [Back to 0027-tree-sitter-multi-language-extraction.md](documentation/adr/0027-tree-sitter-multi-language-extraction.md) • [Back to 0056-scip-index-resolution-for-tree-sitter-languages.md](documentation/adr/0056-scip-index-resolution-for-tree-sitter-languages.md) • [Back to DEPLOYMENT.md](documentation/DEPLOYMENT.md) • [Back to HLD.md](documentation/HLD.md)
 
 Source of truth for this project's open, decided-but-not-built items. Every other doc that used to restate this list (`documentation/HLD.md`'s Non-goals, `documentation/adr/0027-tree-sitter-multi-language-extraction.md`'s Consequences) points here instead of carrying its own copy - check an item here, don't re-describe it there.
 

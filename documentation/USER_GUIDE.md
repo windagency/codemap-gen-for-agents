@@ -205,7 +205,26 @@ Unlike the CLI, the Skill's script exposes **both** `generate` and `read` subcom
 
 ## Managing codemap from a running Claude Code session
 
-You don't need to quit Claude Code to wire codemap in or out. Prefix a shell command with `!` in the prompt to run it inside the session. Slash commands like `/mcp` and `/skills` manage what's loaded. The commands below assume `codemap-mcp` is on your `PATH` (see [Install](#install)).
+You don't need to quit Claude Code to wire codemap in or out. Prefix a shell command with `!` in the prompt to run it inside the session. Slash commands like `/mcp` and `/skills` manage what's loaded. The commands below assume `codemap-mcp` is on your `PATH` (see [Install](#install)), except the plugin, which needs only Node and `npx`.
+
+### Install the Claude Code plugin
+
+The quickest route. The plugin registers the MCP server, launched through `npx` at the exact package version the plugin was released with, plus a skill that tells Claude when to call its `generate` and `read` tools instead of reading files one by one. It installs from this repository's own marketplace; it isn't in Anthropic's plugin directory.
+
+On Claude Code 2.1.275 or later:
+
+```text
+/plugin install codemap --marketplace windagency/codemap-gen-for-agents
+```
+
+On an older version, add the marketplace first:
+
+```text
+/plugin marketplace add windagency/codemap-gen-for-agents
+/plugin install codemap@windagency
+```
+
+Then run `/mcp`: `plugin:codemap:codemap` should show as connected. The first start downloads the package, so it takes longer than later ones. `! claude plugin update codemap@windagency` moves to the latest release, and `! claude plugin uninstall codemap@windagency` removes it. It runs in Claude Code and in Cowork on your own machine, not on claude.ai. Use the plugin or the manual setup below, not both, or Claude sees two `codemap` servers.
 
 ### Add the MCP server
 

@@ -108,13 +108,14 @@ Configuration is **per-repo, not global** - `npm install -g` only puts the binar
 
 The lookup is flat, not a walk up parent directories - a config file one level above `--root` is never picked up. Pass `--config <path>` if you want to keep it somewhere else. Full field reference: [`documentation/USER_GUIDE.md#config-file`](documentation/USER_GUIDE.md#config-file).
 
-### Three ways to run it
+### Four ways to run it
 
-| Surface           | Entry point                                                        | Use case                                                                                               |
-| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| CLI               | `codemap generate`                                                 | One-shot generation from a terminal or script                                                          |
-| MCP server        | `codemap-mcp`                                                      | `generate`/`read` tools for any MCP client (Claude Code, Claude Desktop, ...)                          |
-| Claude Code Skill | [`src/integration/skill/SKILL.md`](src/integration/skill/SKILL.md) | An agent calls the companion script directly, no CLI/MCP round-trip. Install `dist/integration/skill/` |
+| Surface            | Entry point                                                        | Use case                                                                                               |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| CLI                | `codemap generate`                                                 | One-shot generation from a terminal or script                                                          |
+| MCP server         | `codemap-mcp`                                                      | `generate`/`read` tools for any MCP client (Claude Code, Claude Desktop, ...)                          |
+| Claude Code Skill  | [`src/integration/skill/SKILL.md`](src/integration/skill/SKILL.md) | An agent calls the companion script directly, no CLI/MCP round-trip. Install `dist/integration/skill/` |
+| Claude Code plugin | `/plugin install codemap --marketplace windagency/codemap-gen-for-agents` | The MCP server plus a skill on when to use it, in one install. No global install needed: [user guide](documentation/USER_GUIDE.md#install-the-claude-code-plugin) |
 
 Building from source instead of installing from npm, every flag, the config file, the full `codemap.json` schema, and known limitations: **[`documentation/USER_GUIDE.md`](documentation/USER_GUIDE.md)**.
 
